@@ -28,7 +28,7 @@ def main(generations, population_size, genotype_size, elite_size, p_cross, p_mut
         population.sort(key=lambda x: x['fitness'])
         best = (mapping(population[0]['genotype']), population[0]['fitness'])
         bests.append(best)
-        print("Best at", it, best[1], best[0])
+        print('Best at', it, best[1], best[0])
         new_population = population[:elite_size]
         for it in range(elite_size, population_size):
             if random.random() < p_cross:
@@ -70,7 +70,7 @@ def fitness(individual, dataset):
         # instantiate the individual = replace all variables by values from the data set
         ind = individual[:]
         for i in range(len(ds) - 1):
-            ind = ind.replace("x[" + str(i) + "]", str(ds[i]))
+            ind = ind.replace('x[' + str(i) + ']', str(ds[i]))
         # evaluate the individual = run the program
         b.append(eval(ind))
     # fitness = mean squared error
@@ -185,7 +185,7 @@ def plot_behaviour(individual, dataset, name_func):
     for ds in dataset:
         ind = individual[0][:]
         for i in range(len(ds) - 1):
-            ind = ind.replace("x[" + str(i) + "]", str(ds[i]))
+            ind = ind.replace('x[' + str(i) + ']', str(ds[i]))
         y_pred.append(eval(ind))
 
     # visualize

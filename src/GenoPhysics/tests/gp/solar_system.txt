@@ -1,0 +1,9 @@
+1	function_wrappers.add_w	2	function_wrappers.sub_w	2	function_wrappers.mult_w	2	function_wrappers.div_prot_w	2
+5.79 0.241
+10.8 0.615
+15 1
+22.8 1.88
+77.8 11.9
+143 29.5
+297 84
+450 165

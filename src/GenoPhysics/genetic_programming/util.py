@@ -1,5 +1,4 @@
 from types import FunctionType
-from genetic_programming import function_wrappers
 
 
 def get_var_index(var):
@@ -31,6 +30,8 @@ def individual_size(indiv):
 
 # Interpreter. FGGP, algorithm 3.1 - pg.25
 def interpreter(individual, variables):
+    value = None
+
     if isinstance(individual, list):
         try:
             func = eval(individual[0])
@@ -55,3 +56,24 @@ def interpreter(individual, variables):
         value = individual()
 
     return value
+
+
+def is_float(string):
+    try:
+        float(string)
+
+        return True
+    except ValueError:
+
+        return False
+
+
+def tree_to_inline_expression(tree, decimal_places: int = 5):
+    if isinstance(tree, list):
+        operator = ' ' + eval(tree[0]).__annotations__['symbol'] + ' '
+        operands = [tree_to_inline_expression(subtree) for subtree in tree[1:]]
+        operands = [('%.' + str(decimal_places) + 'f') % float(operand) if is_float(operand) else operand for operand in operands]
+
+        return f'({operator.join(operands)})'
+    else:
+        return str(tree)

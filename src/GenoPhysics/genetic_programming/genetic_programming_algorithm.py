@@ -2,15 +2,15 @@ import math
 from copy import deepcopy
 from operator import itemgetter
 from random import seed, random, sample, choice
-import multiprocessing as mp
+import pathos.multiprocessing as mp
 from time import perf_counter
 from types import FunctionType
 
 from genetic_programming.ephemeral_constants import uniform_ephemeral
 from genetic_programming.survivors_selection import survivors_generational
 from genetic_programming.parents_selection import tournament
-from genetic_programming.util import is_var, generate_vars, interpreter, individual_size
-from genetic_programming import function_wrappers
+from genetic_programming.util import is_var, generate_vars, interpreter, individual_size, \
+    tree_to_inline_expression
 
 
 class GeneticProgrammingAlgorithm:
@@ -29,7 +29,7 @@ class GeneticProgrammingAlgorithm:
     DEFAULT_TARGET_FITNESS = 1.0
     DEFAULT_LOG_FILE_PATH = 'output.log'
 
-    MODULE_REGISTER_FUNCTION_SET = "function_wrappers"
+    MODULE_REGISTER_FUNCTION_SET = 'function_wrappers'
 
     def __init__(self, problem_file_path: str,
                  num_runs: int = DEFAULT_NUM_RUNS,
@@ -78,11 +78,18 @@ class GeneticProgrammingAlgorithm:
 
         self.chromosomes = []
         self.population = []
-        self.best_indiv = []
-        self.best_fitness = 0
+        self.best_fitness = []
         self.statistics = []
         self.best_individual = []
-        self.count = 0
+        self.count = []
+
+        for i in range(self.num_runs):
+            self.chromosomes.append([])
+            self.population.append([])
+            self.best_fitness.append(0)
+            self.statistics.append([])
+            self.best_individual.append([])
+            self.count.append(0)
 
         if seed_rng is not None:
             seed(seed_rng)
@@ -96,22 +103,27 @@ class GeneticProgrammingAlgorithm:
         self.log_file = open(log_file_path, 'w')
         self.initial_time = perf_counter()
 
-    def _log(self, msg: str, args: tuple = ()):
+    def _log(self, msg: str, args: tuple = (), run_id: int = None):
         current_time = perf_counter() - self.initial_time
-        current_time_str = ("[%.6fs] " % current_time)
+
+        if run_id is None:
+            current_time_str = ('[GP@%.6fs] ' % current_time)
+        else:
+            current_time_str = ('[GP/%d@%.6fs] ' % (run_id, current_time))
+
         msg_formatted = current_time_str + (msg % args)
         print(msg_formatted)
-        self.log_file.write(msg_formatted + "\n")
+        self.log_file.write(msg_formatted + '\n')
 
     def start(self):
         self._log('Starting genetic programming algorithm...')
         if self.use_multiprocessing:
-            #num_processes = mp.cpu_count() - 1
+            num_processes = self.num_runs
 
-            self._log('Starting %d workers for % runs...', (num_processes, self.num_runs))
+            self._log('Starting %d workers for %d runs...', (num_processes, self.num_runs))
 
             with mp.Pool(processes=self.num_runs) as pool:
-                results = pool.map(self._gp, [])
+                results = pool.map(self._gp, [i for i in range(self.num_runs)])
         else:
             all_stats = [
                 self._gp(i) for i in range(self.num_runs)]
@@ -122,27 +134,34 @@ class GeneticProgrammingAlgorithm:
     def _reset(self):
         self.chromosomes = []
         self.population = []
-        self.best_individual = []
+        self.best_fitness = []
         self.statistics = []
-        self.best_fitness = 0
-        self.counter = 0
+        self.best_individual = []
+        self.count = []
 
+        for i in range(self.num_runs):
+            self.chromosomes.append([])
+            self.population.append([])
+            self.best_fitness.append(0)
+            self.statistics.append([])
+            self.best_individual.append([])
+            self.count.append(0)
 
     def _gp(self, run_id: int):
-        self._log('Starting run no %d...', run_id)
+        self._log('Starting run no %d...', (run_id,), run_id)
         # Reset algorithm variables, important when > 1 run
         self._reset()
 
         # Define initial population
-        self._log('Initializing population with ramped-half-and-half...')
-        self.chromosomes = self._ramped_half_and_half()
+        self._log('Initializing population with ramped-half-and-half...', (), run_id)
+        self.chromosomes[run_id] = self._ramped_half_and_half(run_id)
 
         # Evaluate population
-        self._log('Gen 0 - Evaluating initial population...')
-        self.population = [[chromo, self._evaluate(chromo)] for chromo in self.chromosomes]
-        self.best_individual, self.best_fitness = self._get_best_individual()
-        self._log('Gen 0 - Best fitness %.8f', (self.best_fitness,))
-        self.statistics = [self.best_fitness]
+        self._log('Gen 0 - Evaluating initial population...', (), run_id)
+        self.population[run_id] = [[chromosome, self._evaluate(chromosome)] for chromosome in self.chromosomes[run_id]]
+        self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
+        self._log('Gen 0 - Best fitness %.8f', (self.best_fitness[run_id],), run_id)
+        self.statistics[run_id] = [self.best_fitness[run_id]]
 
         # Evolve
         for i in range(self.num_generations):
@@ -151,29 +170,28 @@ class GeneticProgrammingAlgorithm:
             for j in range(self.population_size):
                 if random() < self.prob_crossover:
                     # subtree crossover
-                    parent_1 = self.func_selection_parents(self.population, self.tournament_size)[0]
-                    parent_2 = self.func_selection_parents(self.population, self.tournament_size)[0]
-                    new_offspring = self._subtree_crossover(parent_1, parent_2)
+                    parent_1 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
+                    parent_2 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
+                    new_offspring = self._subtree_crossover(parent_1, parent_2, run_id)
                 else:  # prob mutation = 1 - prob crossover!
                     # mutation
-                    parent = self.tournament()[0]
+                    parent = self.tournament(run_id)[0]
                     new_offspring = self._point_mutation(parent)
                 offspring.append(new_offspring)
 
             # Evaluate new population (offspring)
-            offspring = [[chromo, self._evaluate(chromo)] for chromo in offspring]
+            offspring = [[chromosome, self._evaluate(chromosome)] for chromosome in offspring]
 
             # Merge parents and offspring
-            self.population = self.func_selection_survivors(self.population, offspring)
+            self.population[run_id] = self.func_selection_survivors(self.population[run_id], offspring)
 
             # Statistics
-            self.best_individual, self.best_fitness = self._get_best_individual()
-            self.statistics.append(self.best_fitness)
-            self._log('Gen %d - Best fitness %.8f', (i + 1, self.best_fitness))
+            self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
+            self.statistics[run_id].append(self.best_fitness[run_id])
+            self._log('Gen %d - Best fitness %.8f', (i + 1, self.best_fitness[run_id]), run_id)
+            self._log('Expression: %s', (tree_to_inline_expression(self.best_individual[run_id]), ), run_id)
 
-        print('FINAL BEST\n%s\nFitness ---> %f\n\n' % (self.best_individual, self.best_fitness))
-
-        return self.statistics
+        return self.statistics[run_id]
 
     def _get_gp_problem_data(self):
         with open(self.problem_file_path, 'r') as f_in:
@@ -189,20 +207,20 @@ class GeneticProgrammingAlgorithm:
 
         return header, fit_cases
 
-    def tournament(self):
-        pool = sample(self.population, self.tournament_size)
+    def tournament(self, run_id):
+        pool = sample(self.population[run_id], self.tournament_size)
 
         pool.sort(key=itemgetter(1), reverse=True)
 
         return pool[0]
 
-    def _get_best_individual(self):
-        all_fit_values = [indiv[1] for indiv in self.population]
+    def _get_best_individual(self, run_id):
+        all_fit_values = [indiv[1] for indiv in self.population[run_id]]
         max_fit = max(all_fit_values)
 
         index_max_fit = all_fit_values.index(max_fit)
 
-        return self.population[index_max_fit]
+        return self.population[run_id][index_max_fit]
 
     def _evaluate(self, individual):
         individual_copy = deepcopy(individual)
@@ -273,28 +291,28 @@ class GeneticProgrammingAlgorithm:
 
         return expr
 
-    def _ramped_half_and_half(self):
+    def _ramped_half_and_half(self, run_id):
         depth = list(range(3, self.initial_max_depth))
 
         for i in range(self.population_size // 2):
-            self.population.append(self._gen_random_expression('grow', choice(depth)))
+            self.population[run_id].append(self._gen_random_expression('grow', choice(depth)))
 
         for i in range(self.population_size // 2):
-            self.population.append(self._gen_random_expression('full', choice(depth)))
+            self.population[run_id].append(self._gen_random_expression('full', choice(depth)))
 
         if self.population_size % 2 != 0:
-            self.population.append(self._gen_random_expression('full', choice(depth)))
+            self.population[run_id].append(self._gen_random_expression('full', choice(depth)))
 
-        return self.population
+        return self.population[run_id]
 
-    def _sub_tree(self, tree, position):
+    def _sub_tree(self, tree, position, run_id):
         def sub_tree_(tree, position):
-            if position == self.count:
-                self.count = 0
+            if position == self.count[run_id]:
+                self.count[run_id] = 0
 
                 return tree
             else:
-                self.count += 1
+                self.count[run_id] += 1
                 res_aux = None
 
                 if isinstance(tree, list):
@@ -322,7 +340,7 @@ class GeneticProgrammingAlgorithm:
         else:
             return tree
 
-    def _subtree_crossover(self, parent1, parent2):
+    def _subtree_crossover(self, parent1, parent2, run_id):
         size_1 = individual_size(parent1)
         size_2 = individual_size(parent2)
 
@@ -330,8 +348,8 @@ class GeneticProgrammingAlgorithm:
         cross_point_2 = choice(list(range(size_2)))
 
         # identify subtrees to exchange
-        sub_tree_1 = self._sub_tree(parent1, cross_point_1)
-        sub_tree_2 = self._sub_tree(parent2, cross_point_2)
+        sub_tree_1 = self._sub_tree(parent1, cross_point_1, run_id)
+        sub_tree_2 = self._sub_tree(parent2, cross_point_2, run_id)
 
         # Exchange
         new_par_1 = deepcopy(parent1)

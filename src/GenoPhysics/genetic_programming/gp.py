@@ -559,7 +559,7 @@ def run_for_plot(num_runs, target, problem, numb_gen, pop_size, in_max_depth, ma
     estatistica_total = [
         sgp_for_plot(problem, numb_gen, pop_size, in_max_depth, max_len, prob_mut_node, prob_cross, t_size, seed_,
                      MIN_RND, MAX_RND) for i in range(num_runs)]
-    print("That's it!")
+    print('That's it!')
     # Process Data: best and average
     resultados_gera = list(zip(*estatistica_total))
     melhores = [max([indiv for indiv in gera]) for gera in resultados_gera]
@@ -569,8 +569,8 @@ def run_for_plot(num_runs, target, problem, numb_gen, pop_size, in_max_depth, ma
     plt.xlabel('Generation')
     titulo = 'Target: %s Runs: %d , Mutation: %0.2f, Xover: %0.2f' % (target, num_runs, prob_mut_node, prob_cross)
     plt.title(titulo)
-    p1 = plt.plot(melhores, 'r-o', label="Best")
-    p2 = plt.plot(medias, 'g-s', label="Average")
+    p1 = plt.plot(melhores, 'r-o', label='Best')
+    p2 = plt.plot(medias, 'g-s', label='Average')
     # Process Target
     # TODO
     plt.legend(loc='best')
@@ -584,7 +584,7 @@ def run_for_plot_survivors(num_runs, target, problem, numb_gen, pop_size, in_max
     estatistica_total = [
         sgp_for_plot_survivors(problem, numb_gen, pop_size, in_max_depth, max_len, prob_mut_node, prob_cross, t_size,
                                survivors, seed_, MIN_RND, MAX_RND) for i in range(num_runs)]
-    print("That's it!")
+    print('That's it!')
     # Process Data: best and average
     resultados_gera = list(zip(*estatistica_total))
     melhores = [max([indiv for indiv in gera]) for gera in resultados_gera]
@@ -594,8 +594,8 @@ def run_for_plot_survivors(num_runs, target, problem, numb_gen, pop_size, in_max
     plt.xlabel('Generation')
     titulo = 'Target: %s Runs: %d , Mutation: %0.2f, Xover: %0.2f' % (target, num_runs, prob_mut_node, prob_cross)
     plt.title(titulo)
-    p1 = plt.plot(melhores, 'r-o', label="Best")
-    p2 = plt.plot(medias, 'g-s', label="Average")
+    p1 = plt.plot(melhores, 'r-o', label='Best')
+    p2 = plt.plot(medias, 'g-s', label='Average')
     # Process Target
     # TODO
     plt.legend(loc='best')
@@ -611,7 +611,7 @@ def display_one_run(data, titulo):
     plt.ylabel('Fitness')
     plt.xlabel('Generation')
     plt.title(titulo)
-    p1 = plt.plot(best_fit, 'r-o', label="Pop Best")
-    p2 = plt.plot(average_fit, 'g-s', label="Pop Average")
+    p1 = plt.plot(best_fit, 'r-o', label='Pop Best')
+    p2 = plt.plot(average_fit, 'g-s', label='Pop Average')
     plt.legend(loc='best')
     plt.show()
