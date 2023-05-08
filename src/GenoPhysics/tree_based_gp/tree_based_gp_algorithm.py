@@ -1,4 +1,6 @@
 import math
+from typing import Callable
+
 import numpy as np
 from copy import deepcopy
 from types import FunctionType
@@ -13,28 +15,30 @@ from tree_based_gp.util import is_var, generate_vars, interpreter, individual_si
 
 
 class TreeBasedGPAlgorithm(BaseGPAlgorithm):
-
+    DEFAULT_INITIAL_MAX_DEPTH = 6
     DEFAULT_DIST_FUNC_EPHEMERAL = uniform_ephemeral()
     MODULE_REGISTER_FUNCTION_SET = 'function_wrappers'
 
-    def __init__(self, problem_file_path: str,
+    def __init__(self,
+                 problem_file_path: str,
                  num_runs: int = BaseGPAlgorithm.DEFAULT_NUM_RUNS,
                  num_generations: int = BaseGPAlgorithm.DEFAULT_NUM_GENERATIONS,
                  population_size: int = BaseGPAlgorithm.DEFAULT_POPULATION_SIZE,
-                 initial_max_depth: int = BaseGPAlgorithm.DEFAULT_INITIAL_MAX_DEPTH,
-                 prob_mutation_node: float = BaseGPAlgorithm.DEFAULT_PROB_MUTATION_NODE,
+                 initial_max_depth: int = DEFAULT_INITIAL_MAX_DEPTH,
+                 prob_mutation: float = BaseGPAlgorithm.DEFAULT_PROB_MUTATION_NODE,
                  prob_crossover: float = BaseGPAlgorithm.DEFAULT_PROB_CROSSOVER,
                  tournament_size: int = BaseGPAlgorithm.DEFAULT_TOURNAMENT_SIZE,
                  elite_size: float = BaseGPAlgorithm.DEFAULT_ELITE_SIZE,
                  inject_random_foreigners: bool = True,
                  random_foreigners_injected_size: float = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
                  random_foreigners_injection_period: int = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
-                 fitness_function: FunctionType = BaseGPAlgorithm.DEFAULT_FITNESS_FUNCTION,
-                 func_selection_survivors: FunctionType = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_SURVIVORS,
-                 func_selection_parents: FunctionType = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_PARENTS,
-                 dist_func_ephemeral: FunctionType = BaseGPAlgorithm.DEFAULT_DIST_FUNC_EPHEMERAL,
-                 const_set: list = (),
+                 fitness_function: Callable = BaseGPAlgorithm.DEFAULT_FITNESS_FUNCTION,
                  target_fitness: float = BaseGPAlgorithm.DEFAULT_TARGET_FITNESS,
+                 invalid_fitness: float = BaseGPAlgorithm.DEFAULT_INVALID_FITNESS,
+                 func_selection_survivors: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_SURVIVORS,
+                 func_selection_parents: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_PARENTS,
+                 dist_func_ephemeral: Callable = DEFAULT_DIST_FUNC_EPHEMERAL,
+                 const_set: list = (),
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
                  log_file_path: str = BaseGPAlgorithm.DEFAULT_LOG_FILE_PATH,
@@ -47,25 +51,36 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         :param num_generations: The number of generations to run the algorithm for.
         :param population_size: The size of the population.
         :param initial_max_depth: The initial maximum depth of the tree individuals.
-        :param prob_mutation_node: The probability of mutating a node in an individual.
+        :param prob_mutation: The probability of mutating a node in an individual.
         :param prob_crossover: The probability of performing crossover between two individuals.
         :param tournament_size: The size of the tournament selection.
         :param seed_rng: The seed for the random number generator.
         """
-        super().__init__(problem_file_path, num_runs, num_generations, population_size, initial_max_depth,
-                         prob_mutation_node, prob_crossover, tournament_size, elite_size, inject_random_foreigners,
+        super().__init__(problem_file_path, num_runs, num_generations, population_size,
+                         prob_mutation, prob_crossover, tournament_size, elite_size, inject_random_foreigners,
                          random_foreigners_injected_size, random_foreigners_injection_period, fitness_function,
-                         func_selection_survivors, func_selection_parents, target_fitness, seed_rng,
+                         target_fitness, invalid_fitness, func_selection_survivors, func_selection_parents, seed_rng,
                          use_multiprocessing, log_file_path, verbose)
 
+        self.initial_max_depth = initial_max_depth
         self.dist_func_ephemeral = dist_func_ephemeral
-        self.header, self.fit_cases = self._get_gp_problem_data()
         self.num_vars, self.function_set = self.header
         self.vars_set = generate_vars(self.num_vars)
         self.const_set = list(const_set)
         self.const_set.append(self.dist_func_ephemeral)
         self.terminal_set = self.vars_set + self.const_set
 
+    def plot_results(self, results: list) -> None:
+        fig, ax = plt.subplots()
+        for i in range(self.num_runs):
+            ax.plot(results[i]['bests'], 'r-o', label='Best')
+            mn = np.mean(np.asarray(results[i]['all']), axis=1)
+            ax.plot(mn, 'g-s', label='Mean')
+            # create a boxplot
+            # bp = ax.boxplot(results[i]['all'], widths=0.5)
+            ax.set_xlabel('Generation')
+            ax.set_ylabel('Fitness ([0...1])')
+            plt.show()
 
     def _gp(self, run_id: int):
         self._log('Starting run no %d...', (run_id,), run_id)
@@ -113,7 +128,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
             self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
             self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
             non_simplified_expr, simplified_expr = tree_to_inline_expression(self.best_individual[run_id])
-            self._log('Expression: %s', (simplified_expr, ), run_id)
+            self._log('Expression: %s', (simplified_expr,), run_id)
 
         return self.statistics[run_id]
 

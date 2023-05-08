@@ -1,4 +1,5 @@
 import sys
+from typing import Callable
 
 import numpy as np
 from random import seed
@@ -16,7 +17,6 @@ class BaseGPAlgorithm:
     DEFAULT_NUM_RUNS = 5
     DEFAULT_NUM_GENERATIONS = 100
     DEFAULT_POPULATION_SIZE = 50
-    DEFAULT_INITIAL_MAX_DEPTH = 6
     DEFAULT_PROB_MUTATION_NODE = 0.1
     DEFAULT_PROB_CROSSOVER = 0.7
     DEFAULT_TOURNAMENT_SIZE = 3
@@ -35,19 +35,18 @@ class BaseGPAlgorithm:
                  num_runs: int = DEFAULT_NUM_RUNS,
                  num_generations: int = DEFAULT_NUM_GENERATIONS,
                  population_size: int = DEFAULT_POPULATION_SIZE,
-                 initial_max_depth: int = DEFAULT_INITIAL_MAX_DEPTH,
-                 prob_mutation_node: float = DEFAULT_PROB_MUTATION_NODE,
+                 prob_mutation: float = DEFAULT_PROB_MUTATION_NODE,
                  prob_crossover: float = DEFAULT_PROB_CROSSOVER,
                  tournament_size: int = DEFAULT_TOURNAMENT_SIZE,
                  elite_size: float = DEFAULT_ELITE_SIZE,
                  inject_random_foreigners: bool = True,
                  random_foreigners_injected_size: float = DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
                  random_foreigners_injection_period: int = DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
-                 fitness_function: FunctionType = DEFAULT_FITNESS_FUNCTION,
-                 func_selection_survivors: FunctionType = DEFAULT_FUNC_SELECTION_SURVIVORS,
-                 func_selection_parents: FunctionType = DEFAULT_FUNC_SELECTION_PARENTS,
+                 fitness_function: Callable = DEFAULT_FITNESS_FUNCTION,
                  target_fitness: float = DEFAULT_TARGET_FITNESS,
                  invalid_fitness: float = DEFAULT_INVALID_FITNESS,
+                 func_selection_survivors: Callable = DEFAULT_FUNC_SELECTION_SURVIVORS,
+                 func_selection_parents: Callable = DEFAULT_FUNC_SELECTION_PARENTS,
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
                  log_file_path: str = DEFAULT_LOG_FILE_PATH,
@@ -56,10 +55,12 @@ class BaseGPAlgorithm:
         self.initial_time = perf_counter()
         self.problem_file_path = problem_file_path
         self.num_runs = num_runs
-        self.num_generations = num_generations
+        if not isinstance(num_generations, int) or num_generations < 1:
+            self.num_generations = sys.maxsize # keep going until reaching the target fitness
+        else:
+            self.num_generations = num_generations
         self.population_size = population_size
-        self.initial_max_depth = initial_max_depth
-        self.prob_mutation = prob_mutation_node
+        self.prob_mutation = prob_mutation
         self.prob_crossover = prob_crossover
         self.tournament_size = tournament_size
         self.elite_size = elite_size
@@ -75,9 +76,10 @@ class BaseGPAlgorithm:
         self.use_multiprocessing = use_multiprocessing
         self.log_file_path = log_file_path
         self.verbose = verbose
-        self.log_file = open(log_file_path, 'w')
 
         self._reset()
+        self.log_file = open(log_file_path, 'w')
+        self.header, self.fit_cases = self._get_gp_problem_data()
 
         if seed_rng is not None:
             seed(seed_rng)
@@ -98,7 +100,6 @@ class BaseGPAlgorithm:
         plt.show()
 
     def _reset(self):
-        self.fit_cases = []
         self.chromosomes = []
         self.population = []
         self.best_fitness = []
@@ -114,7 +115,7 @@ class BaseGPAlgorithm:
             self.best_individual.append([])
             self.count.append(0)
 
-    def start(self):
+    def execute(self):
         self._log('Starting genetic programming algorithm...')
         results = []
         if self.use_multiprocessing:
@@ -129,8 +130,7 @@ class BaseGPAlgorithm:
             results = [
                 self._gp(i) for i in range(self.num_runs)
             ]
-
-        self.plot_results(results)
+        return results
 
     def end(self):
         self.log_file.close()
@@ -148,18 +148,6 @@ class BaseGPAlgorithm:
             fit_cases = [[float(elem) for elem in case[:-1].split()] for case in data]
 
         return header, fit_cases
-
-    def plot_results(self, results: list) -> None:
-        fig, ax = plt.subplots()
-        for i in range(self.num_runs):
-            ax.plot(results[i]['bests'], 'r-o', label='Best')
-            mn = np.mean(np.asarray(results[i]['all']), axis=1)
-            ax.plot(mn, 'g-s', label='Mean')
-            # create a boxplot
-            # bp = ax.boxplot(results[i]['all'], widths=0.5)
-            ax.set_xlabel('Generation')
-            ax.set_ylabel('Fitness ([0...1])')
-            plt.show()
 
     def plot_data(self):
         data = self.fit_cases
