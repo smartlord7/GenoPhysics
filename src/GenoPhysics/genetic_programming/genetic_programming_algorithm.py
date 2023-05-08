@@ -2,9 +2,13 @@ import math
 from copy import deepcopy
 from operator import itemgetter
 from random import seed, random, sample, choice
+
+import numpy as np
 import pathos.multiprocessing as mp
 from time import perf_counter
 from types import FunctionType
+
+from matplotlib import pyplot as plt
 
 from genetic_programming.ephemeral_constants import uniform_ephemeral
 from genetic_programming.survivors_selection import survivors_generational
@@ -124,8 +128,19 @@ class GeneticProgrammingAlgorithm:
 
             with mp.Pool(processes=self.num_runs) as pool:
                 results = pool.map(self._gp, [i for i in range(self.num_runs)])
+
+            for i in range(self.num_runs):
+                fig, ax = plt.subplots()
+                ax.plot(results[i]['bests'], 'r-o', label='Best')
+                mn = np.mean(np.asarray(results[i]['all']), axis=1)
+                ax.plot(mn, 'g-s', label='Mean')
+                # create a boxplot
+                # bp = ax.boxplot(results[i]['all'], widths=0.5)
+                ax.set_xlabel('Generation')
+                ax.set_ylabel('Fitness ([0...1])')
+                plt.show()
         else:
-            all_stats = [
+            results = [
                 self._gp(i) for i in range(self.num_runs)]
 
     def end(self):
@@ -143,7 +158,7 @@ class GeneticProgrammingAlgorithm:
             self.chromosomes.append([])
             self.population.append([])
             self.best_fitness.append(0)
-            self.statistics.append([])
+            self.statistics.append({})
             self.best_individual.append([])
             self.count.append(0)
 
@@ -161,7 +176,8 @@ class GeneticProgrammingAlgorithm:
         self.population[run_id] = [[chromosome, self._evaluate(chromosome)] for chromosome in self.chromosomes[run_id]]
         self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
         self._log('Gen 0 - Best fitness %.8f', (self.best_fitness[run_id],), run_id)
-        self.statistics[run_id] = [self.best_fitness[run_id]]
+        self.statistics[run_id]['bests'] = [self.best_fitness[run_id]]
+        self.statistics[run_id]['all'] = [[individual[1] for individual in self.population[run_id]]]
 
         # Evolve
         for i in range(self.num_generations):
@@ -187,7 +203,8 @@ class GeneticProgrammingAlgorithm:
 
             # Statistics
             self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
-            self.statistics[run_id].append(self.best_fitness[run_id])
+            self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
+            self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
             self._log('Gen %d - Best fitness %.8f', (i + 1, self.best_fitness[run_id]), run_id)
             self._log('Expression: %s', (tree_to_inline_expression(self.best_individual[run_id]), ), run_id)
 
