@@ -1,6 +1,6 @@
 import sympy as sp
 from types import FunctionType
-from genetic_programming import function_wrappers # DONT ERASE THIS!
+from tree_based_gp import function_wrappers # DONT ERASE THIS!
 
 
 def get_var_index(var):

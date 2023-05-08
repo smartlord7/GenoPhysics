@@ -2,63 +2,47 @@ import math
 from copy import deepcopy
 from operator import itemgetter
 from random import seed, random, sample, choice
-import sympy as sp
 import numpy as np
 import pathos.multiprocessing as mp
 from time import perf_counter
 from types import FunctionType
-
 from matplotlib import pyplot as plt
 
-from genetic_programming.ephemeral_constants import uniform_ephemeral
-from genetic_programming.fitness_functions import sigmoid
-from genetic_programming.survivors_selection import survivors_generational
-from genetic_programming.parents_selection import tournament
-from genetic_programming.util import is_var, generate_vars, interpreter, individual_size, \
+from base_gp_algorithm import BaseGPAlgorithm
+from tree_based_gp.ephemeral_constants import uniform_ephemeral
+from tree_based_gp.fitness_functions import sigmoid
+from tree_based_gp.survivors_selection import survivors_generational
+from tree_based_gp.parents_selection import tournament
+from tree_based_gp.util import is_var, generate_vars, interpreter, individual_size, \
     tree_to_inline_expression
 
 
-class GeneticProgrammingAlgorithm:
-    DEFAULT_NUM_RUNS = 5
-    DEFAULT_NUM_GENERATIONS = 100
-    DEFAULT_POPULATION_SIZE = 50
-    DEFAULT_INITIAL_MAX_DEPTH = 6
-    DEFAULT_PROB_MUTATION_NODE = 0.1
-    DEFAULT_PROB_CROSSOVER = 0.7
-    DEFAULT_TOURNAMENT_SIZE = 3
-    DEFAULT_ELITE_SIZE = 0.1
-    DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE = 0.2
-    DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD = 50
-    DEFAULT_FITNESS_FUNCTION = sigmoid
-    DEFAULT_FUNC_SELECTION_SURVIVORS = survivors_generational
-    DEFAULT_FUNC_SELECTION_PARENTS = tournament
-    DEFAULT_DIST_FUNC_EPHEMERAL = uniform_ephemeral()
-    DEFAULT_TARGET_FITNESS = 1.0
-    DEFAULT_LOG_FILE_PATH = 'output.log'
+class TreeBasedGPAlgorithm(BaseGPAlgorithm):
 
+    DEFAULT_DIST_FUNC_EPHEMERAL = uniform_ephemeral()
     MODULE_REGISTER_FUNCTION_SET = 'function_wrappers'
 
     def __init__(self, problem_file_path: str,
-                 num_runs: int = DEFAULT_NUM_RUNS,
-                 num_generations: int = DEFAULT_NUM_GENERATIONS,
-                 population_size: int = DEFAULT_POPULATION_SIZE,
-                 initial_max_depth: int = DEFAULT_INITIAL_MAX_DEPTH,
-                 prob_mutation_node: float = DEFAULT_PROB_MUTATION_NODE,
-                 prob_crossover: float = DEFAULT_PROB_CROSSOVER,
-                 tournament_size: int = DEFAULT_TOURNAMENT_SIZE,
-                 elite_size: float = DEFAULT_ELITE_SIZE,
+                 num_runs: int = BaseGPAlgorithm.DEFAULT_NUM_RUNS,
+                 num_generations: int = BaseGPAlgorithm.DEFAULT_NUM_GENERATIONS,
+                 population_size: int = BaseGPAlgorithm.DEFAULT_POPULATION_SIZE,
+                 initial_max_depth: int = BaseGPAlgorithm.DEFAULT_INITIAL_MAX_DEPTH,
+                 prob_mutation_node: float = BaseGPAlgorithm.DEFAULT_PROB_MUTATION_NODE,
+                 prob_crossover: float = BaseGPAlgorithm.DEFAULT_PROB_CROSSOVER,
+                 tournament_size: int = BaseGPAlgorithm.DEFAULT_TOURNAMENT_SIZE,
+                 elite_size: float = BaseGPAlgorithm.DEFAULT_ELITE_SIZE,
                  inject_random_foreigners: bool = True,
-                 random_foreigners_injected_size: float = DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
-                 random_foreigners_injection_period: int = DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
-                 fitness_function: FunctionType = DEFAULT_FITNESS_FUNCTION,
-                 func_selection_survivors: FunctionType = DEFAULT_FUNC_SELECTION_SURVIVORS,
-                 func_selection_parents: FunctionType = DEFAULT_FUNC_SELECTION_PARENTS,
-                 dist_func_ephemeral: FunctionType = DEFAULT_DIST_FUNC_EPHEMERAL,
+                 random_foreigners_injected_size: float = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
+                 random_foreigners_injection_period: int = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
+                 fitness_function: FunctionType = BaseGPAlgorithm.DEFAULT_FITNESS_FUNCTION,
+                 func_selection_survivors: FunctionType = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_SURVIVORS,
+                 func_selection_parents: FunctionType = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_PARENTS,
+                 dist_func_ephemeral: FunctionType = BaseGPAlgorithm.DEFAULT_DIST_FUNC_EPHEMERAL,
                  const_set: list = (),
-                 target_fitness: float = DEFAULT_TARGET_FITNESS,
+                 target_fitness: float = BaseGPAlgorithm.DEFAULT_TARGET_FITNESS,
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
-                 log_file_path: str = DEFAULT_LOG_FILE_PATH,
+                 log_file_path: str = BaseGPAlgorithm.DEFAULT_LOG_FILE_PATH,
                  verbose: bool = True):
 
         """
@@ -73,67 +57,19 @@ class GeneticProgrammingAlgorithm:
         :param tournament_size: The size of the tournament selection.
         :param seed_rng: The seed for the random number generator.
         """
-        self.problem_file_path = problem_file_path
-        self.num_runs = num_runs
-        self.num_generations = num_generations
-        self.population_size = population_size
-        self.initial_max_depth = initial_max_depth
-        self.prob_mutation_node = prob_mutation_node
-        self.prob_crossover = prob_crossover
-        self.tournament_size = tournament_size
-        self.elite_size = elite_size
-        self.inject_random_foreigners = inject_random_foreigners
-        self.random_foreigners_injected_size = random_foreigners_injected_size
-        self.random_foreigners_injection_period = random_foreigners_injection_period
-        self.fitness_function = fitness_function
-        self.func_selection_survivors = func_selection_survivors
-        self.func_selection_parents = func_selection_parents
+        super().__init__(problem_file_path, num_runs, num_generations, population_size, initial_max_depth,
+                         prob_mutation_node, prob_crossover, tournament_size, elite_size, inject_random_foreigners,
+                         random_foreigners_injected_size, random_foreigners_injection_period, fitness_function,
+                         func_selection_survivors, func_selection_parents, target_fitness, seed_rng,
+                         use_multiprocessing, log_file_path, verbose)
+
         self.dist_func_ephemeral = dist_func_ephemeral
-        self.target_fitness = target_fitness
-        self.seed_rng = seed_rng
-        self.use_multiprocessing = use_multiprocessing
-
-        self.chromosomes = []
-        self.population = []
-        self.best_fitness = []
-        self.statistics = []
-        self.best_individual = []
-        self.count = []
-
-        for i in range(self.num_runs):
-            self.chromosomes.append([])
-            self.population.append([])
-            self.best_fitness.append(0)
-            self.statistics.append([])
-            self.best_individual.append([])
-            self.count.append(0)
-
-        if seed_rng is not None:
-            seed(seed_rng)
-
         self.header, self.fit_cases = self._get_gp_problem_data()
         self.num_vars, self.function_set = self.header
         self.vars_set = generate_vars(self.num_vars)
         self.const_set = list(const_set)
         self.const_set.append(self.dist_func_ephemeral)
         self.terminal_set = self.vars_set + self.const_set
-        self.log_file_path = log_file_path
-        self.verbose = verbose
-        self.log_file = open(log_file_path, 'w')
-        self.initial_time = perf_counter()
-
-    def _log(self, msg: str, args: tuple = (), run_id: int = None):
-        if self.verbose:
-            current_time = perf_counter() - self.initial_time
-
-            if run_id is None:
-                current_time_str = ('[GP@%.6fs] ' % current_time)
-            else:
-                current_time_str = ('[GP/%d@%.6fs] ' % (run_id, current_time))
-
-            msg_formatted = current_time_str + (msg % args)
-            print(msg_formatted)
-            self.log_file.write(msg_formatted + '\n')
 
     def plot_data(self):
         data = self.fit_cases
@@ -169,21 +105,6 @@ class GeneticProgrammingAlgorithm:
     def end(self):
         self.log_file.close()
 
-    def _reset(self):
-        self.chromosomes = []
-        self.population = []
-        self.best_fitness = []
-        self.statistics = []
-        self.best_individual = []
-        self.count = []
-
-        for i in range(self.num_runs):
-            self.chromosomes.append([])
-            self.population.append([])
-            self.best_fitness.append(0)
-            self.statistics.append({})
-            self.best_individual.append([])
-            self.count.append(0)
 
     def _gp(self, run_id: int):
         self._log('Starting run no %d...', (run_id,), run_id)
