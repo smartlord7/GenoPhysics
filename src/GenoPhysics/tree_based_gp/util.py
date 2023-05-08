@@ -1,3 +1,5 @@
+from typing import Any
+
 import sympy as sp
 from types import FunctionType
 from tree_based_gp import function_wrappers # DONT ERASE THIS!
@@ -69,15 +71,14 @@ def is_float(string):
         return False
 
 
-def tree_to_inline_expression(tree: list, decimal_places: int = 5) -> str:
-    expression = tree_to_inline_expression_(tree)
-    print(expression)
-    expr = sp.sympify(expression)
+def tree_to_inline_expression(tree: list, decimal_places: int = 5) -> tuple[str, Any]:
+    non_simplified_expr = tree_to_inline_expression_(tree)
+    expr = sp.sympify(non_simplified_expr)
     simplified_expr = sp.simplify(expr)
-    simplified_expr = sp.expand(simplified_expr)
+    simplified_expr = sp.factor(simplified_expr)
     simplified_expr = sp.N(simplified_expr, decimal_places)
 
-    return simplified_expr
+    return non_simplified_expr, simplified_expr
 
 
 def tree_to_inline_expression_(tree):

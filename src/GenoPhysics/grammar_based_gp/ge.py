@@ -11,7 +11,6 @@ import random
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
-from utils import *
 
 
 # General Code

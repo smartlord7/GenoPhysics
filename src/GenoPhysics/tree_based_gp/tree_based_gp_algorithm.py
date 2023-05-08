@@ -1,18 +1,13 @@
 import math
-from copy import deepcopy
-from operator import itemgetter
-from random import seed, random, sample, choice
 import numpy as np
-import pathos.multiprocessing as mp
-from time import perf_counter
+from copy import deepcopy
 from types import FunctionType
+from operator import itemgetter
+import pathos.multiprocessing as mp
 from matplotlib import pyplot as plt
-
-from base_gp_algorithm import BaseGPAlgorithm
+from random import random, sample, choice
+from base_gp_algorithm.base_gp_algorithm import BaseGPAlgorithm
 from tree_based_gp.ephemeral_constants import uniform_ephemeral
-from tree_based_gp.fitness_functions import sigmoid
-from tree_based_gp.survivors_selection import survivors_generational
-from tree_based_gp.parents_selection import tournament
 from tree_based_gp.util import is_var, generate_vars, interpreter, individual_size, \
     tree_to_inline_expression
 
@@ -71,40 +66,6 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self.const_set.append(self.dist_func_ephemeral)
         self.terminal_set = self.vars_set + self.const_set
 
-    def plot_data(self):
-        data = self.fit_cases
-        x = list(map(lambda pair: pair[0], data))
-        y = list(map(lambda pair: pair[1], data))
-        plt.plot(x, y)
-        plt.show()
-
-    def start(self):
-        self._log('Starting genetic programming algorithm...')
-        if self.use_multiprocessing:
-            num_processes = self.num_runs
-
-            self._log('Starting %d workers for %d runs...', (num_processes, self.num_runs))
-
-            with mp.Pool(processes=self.num_runs) as pool:
-                results = pool.map(self._gp, [i for i in range(self.num_runs)])
-
-            fig, ax = plt.subplots()
-            for i in range(self.num_runs):
-                ax.plot(results[i]['bests'], 'r-o', label='Best')
-                mn = np.mean(np.asarray(results[i]['all']), axis=1)
-                ax.plot(mn, 'g-s', label='Mean')
-                # create a boxplot
-                # bp = ax.boxplot(results[i]['all'], widths=0.5)
-                ax.set_xlabel('Generation')
-                ax.set_ylabel('Fitness ([0...1])')
-                plt.show()
-        else:
-            results = [
-                self._gp(i) for i in range(self.num_runs)]
-
-    def end(self):
-        self.log_file.close()
-
 
     def _gp(self, run_id: int):
         self._log('Starting run no %d...', (run_id,), run_id)
@@ -151,26 +112,10 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
             self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
             self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
             self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
-            # self._log('Expression: %s', (tree_to_inline_expression(self.best_individual[run_id]), ), run_id)
-
-        print('Final best fitness %.8f - run %d' % (self.best_fitness[run_id], run_id))
-        print('Expression: %s' % tree_to_inline_expression(self.best_individual[run_id]))
+            non_simplified_expr, simplified_expr = tree_to_inline_expression(self.best_individual[run_id])
+            self._log('Expression: %s', (simplified_expr, ), run_id)
 
         return self.statistics[run_id]
-
-    def _get_gp_problem_data(self):
-        with open(self.problem_file_path, 'r') as f_in:
-            lines = f_in.readlines()
-            header_line = lines[0][:-1]  # retrieve header
-            header = [int(header_line.split()[0]), []]
-
-            for i in range(1, len(header_line.split()), 2):
-                header[1].append([header_line.split()[i], int(header_line.split()[i + 1])])
-
-            data = lines[1:]  # ignore header
-            fit_cases = [[float(elem) for elem in case[:-1].split()] for case in data]
-
-        return header, fit_cases
 
     def tournament(self, run_id):
         pool = sample(self.population[run_id], self.tournament_size)
@@ -199,7 +144,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         predicted = np.asarray(predicted)
         real = np.asarray(real)
 
-        return self.fitness_function(predicted, real)
+        return self.func_fitness(predicted, real)
 
     def _inject_random_foreigners(self, generation: int, run_id: int):
         if self.inject_random_foreigners and \
@@ -218,7 +163,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
     def _point_mutation(self, parent):
         parent_muted = deepcopy(parent)
 
-        if random() < self.prob_mutation_node:
+        if random() < self.prob_mutation:
             if isinstance(parent_muted, list):
                 # Function case
                 symbol = parent_muted[0]
