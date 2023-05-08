@@ -2,7 +2,7 @@ import math
 from copy import deepcopy
 from operator import itemgetter
 from random import seed, random, sample, choice
-
+import sympy as sp
 import numpy as np
 import pathos.multiprocessing as mp
 from time import perf_counter
@@ -11,6 +11,7 @@ from types import FunctionType
 from matplotlib import pyplot as plt
 
 from genetic_programming.ephemeral_constants import uniform_ephemeral
+from genetic_programming.fitness_functions import sigmoid
 from genetic_programming.survivors_selection import survivors_generational
 from genetic_programming.parents_selection import tournament
 from genetic_programming.util import is_var, generate_vars, interpreter, individual_size, \
@@ -22,11 +23,13 @@ class GeneticProgrammingAlgorithm:
     DEFAULT_NUM_GENERATIONS = 100
     DEFAULT_POPULATION_SIZE = 50
     DEFAULT_INITIAL_MAX_DEPTH = 6
-    DEFAULT_MAX_LENGTH = 1000
     DEFAULT_PROB_MUTATION_NODE = 0.1
     DEFAULT_PROB_CROSSOVER = 0.7
     DEFAULT_TOURNAMENT_SIZE = 3
     DEFAULT_ELITE_SIZE = 0.1
+    DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE = 0.2
+    DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD = 50
+    DEFAULT_FITNESS_FUNCTION = sigmoid
     DEFAULT_FUNC_SELECTION_SURVIVORS = survivors_generational
     DEFAULT_FUNC_SELECTION_PARENTS = tournament
     DEFAULT_DIST_FUNC_EPHEMERAL = uniform_ephemeral()
@@ -44,13 +47,19 @@ class GeneticProgrammingAlgorithm:
                  prob_crossover: float = DEFAULT_PROB_CROSSOVER,
                  tournament_size: int = DEFAULT_TOURNAMENT_SIZE,
                  elite_size: float = DEFAULT_ELITE_SIZE,
+                 inject_random_foreigners: bool = True,
+                 random_foreigners_injected_size: float = DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
+                 random_foreigners_injection_period: int = DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
+                 fitness_function: FunctionType = DEFAULT_FITNESS_FUNCTION,
                  func_selection_survivors: FunctionType = DEFAULT_FUNC_SELECTION_SURVIVORS,
                  func_selection_parents: FunctionType = DEFAULT_FUNC_SELECTION_PARENTS,
                  dist_func_ephemeral: FunctionType = DEFAULT_DIST_FUNC_EPHEMERAL,
+                 const_set: list = (),
                  target_fitness: float = DEFAULT_TARGET_FITNESS,
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
-                 log_file_path: str = DEFAULT_LOG_FILE_PATH):
+                 log_file_path: str = DEFAULT_LOG_FILE_PATH,
+                 verbose: bool = True):
 
         """
         Initializes the GeneticProgrammingAlgorithm class.
@@ -73,6 +82,10 @@ class GeneticProgrammingAlgorithm:
         self.prob_crossover = prob_crossover
         self.tournament_size = tournament_size
         self.elite_size = elite_size
+        self.inject_random_foreigners = inject_random_foreigners
+        self.random_foreigners_injected_size = random_foreigners_injected_size
+        self.random_foreigners_injection_period = random_foreigners_injection_period
+        self.fitness_function = fitness_function
         self.func_selection_survivors = func_selection_survivors
         self.func_selection_parents = func_selection_parents
         self.dist_func_ephemeral = dist_func_ephemeral
@@ -101,23 +114,33 @@ class GeneticProgrammingAlgorithm:
         self.header, self.fit_cases = self._get_gp_problem_data()
         self.num_vars, self.function_set = self.header
         self.vars_set = generate_vars(self.num_vars)
-        self.const_set = [self.dist_func_ephemeral]
+        self.const_set = list(const_set)
+        self.const_set.append(self.dist_func_ephemeral)
         self.terminal_set = self.vars_set + self.const_set
-        self.log_file_path = 'output.log'
+        self.log_file_path = log_file_path
+        self.verbose = verbose
         self.log_file = open(log_file_path, 'w')
         self.initial_time = perf_counter()
 
     def _log(self, msg: str, args: tuple = (), run_id: int = None):
-        current_time = perf_counter() - self.initial_time
+        if self.verbose:
+            current_time = perf_counter() - self.initial_time
 
-        if run_id is None:
-            current_time_str = ('[GP@%.6fs] ' % current_time)
-        else:
-            current_time_str = ('[GP/%d@%.6fs] ' % (run_id, current_time))
+            if run_id is None:
+                current_time_str = ('[GP@%.6fs] ' % current_time)
+            else:
+                current_time_str = ('[GP/%d@%.6fs] ' % (run_id, current_time))
 
-        msg_formatted = current_time_str + (msg % args)
-        print(msg_formatted)
-        self.log_file.write(msg_formatted + '\n')
+            msg_formatted = current_time_str + (msg % args)
+            print(msg_formatted)
+            self.log_file.write(msg_formatted + '\n')
+
+    def plot_data(self):
+        data = self.fit_cases
+        x = list(map(lambda pair: pair[0], data))
+        y = list(map(lambda pair: pair[1], data))
+        plt.plot(x, y)
+        plt.show()
 
     def start(self):
         self._log('Starting genetic programming algorithm...')
@@ -129,8 +152,8 @@ class GeneticProgrammingAlgorithm:
             with mp.Pool(processes=self.num_runs) as pool:
                 results = pool.map(self._gp, [i for i in range(self.num_runs)])
 
+            fig, ax = plt.subplots()
             for i in range(self.num_runs):
-                fig, ax = plt.subplots()
                 ax.plot(results[i]['bests'], 'r-o', label='Best')
                 mn = np.mean(np.asarray(results[i]['all']), axis=1)
                 ax.plot(mn, 'g-s', label='Mean')
@@ -169,7 +192,7 @@ class GeneticProgrammingAlgorithm:
 
         # Define initial population
         self._log('Initializing population with ramped-half-and-half...', (), run_id)
-        self.chromosomes[run_id] = self._ramped_half_and_half(run_id)
+        self.chromosomes[run_id] = self._ramped_half_and_half(self.chromosomes[run_id], self.population_size)
 
         # Evaluate population
         self._log('Gen 0 - Evaluating initial population...', (), run_id)
@@ -180,7 +203,8 @@ class GeneticProgrammingAlgorithm:
         self.statistics[run_id]['all'] = [[individual[1] for individual in self.population[run_id]]]
 
         # Evolve
-        for i in range(self.num_generations):
+        for gen in range(self.num_generations):
+            self._inject_random_foreigners(gen, run_id)
             # offspring after variation
             offspring = []
             for j in range(self.population_size):
@@ -205,8 +229,11 @@ class GeneticProgrammingAlgorithm:
             self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
             self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
             self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
-            self._log('Gen %d - Best fitness %.8f', (i + 1, self.best_fitness[run_id]), run_id)
-            self._log('Expression: %s', (tree_to_inline_expression(self.best_individual[run_id]), ), run_id)
+            self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
+            # self._log('Expression: %s', (tree_to_inline_expression(self.best_individual[run_id]), ), run_id)
+
+        print('Final best fitness %.8f - run %d' % (self.best_fitness[run_id], run_id))
+        print('Expression: %s' % tree_to_inline_expression(self.best_individual[run_id]))
 
         return self.statistics[run_id]
 
@@ -241,13 +268,31 @@ class GeneticProgrammingAlgorithm:
 
     def _evaluate(self, individual):
         individual_copy = deepcopy(individual)
-        error = 0
 
+        predicted = []
+        real = []
         for case in self.fit_cases:
-            result = interpreter(individual_copy, case[:-1])
-            error += abs(result - case[-1])
+            predicted.append(interpreter(individual_copy, case[:-1]))
+            real.append(case[-1])
 
-        return 1.0 / (1.0 + error)
+        predicted = np.asarray(predicted)
+        real = np.asarray(real)
+
+        return self.fitness_function(predicted, real)
+
+    def _inject_random_foreigners(self, generation: int, run_id: int):
+        if self.inject_random_foreigners and \
+                generation != 0 and \
+                (generation % self.random_foreigners_injection_period) == 0:
+            size = math.ceil(self.random_foreigners_injected_size * len(self.population[run_id]))
+            chromosomes = []
+            rdm_foreigners_chromosomes = self._ramped_half_and_half(chromosomes, size)
+            rdm_foreigners_population = [[chromosome, self._evaluate(chromosome)] for chromosome in
+                                         rdm_foreigners_chromosomes]
+            self.population[run_id].sort(key=itemgetter(1), reverse=False)
+            rdm_foreigners_population.sort(key=itemgetter(1), reverse=True)
+
+            self.population[run_id] = rdm_foreigners_population + self.population[run_id][size:]
 
     def _point_mutation(self, parent):
         parent_muted = deepcopy(parent)
@@ -260,7 +305,12 @@ class GeneticProgrammingAlgorithm:
                 parent_muted[1:] = [self._point_mutation(arg) for arg in parent_muted[1:]]
             elif isinstance(parent_muted, (float, int)):
                 # Constant case
-                return self.const_set[0]()
+                cst = self.const_set[0]
+
+                if isinstance(cst, FunctionType):
+                    return cst()
+                elif isinstance(cst, (float, int)):
+                    return cst
             elif is_var(parent_muted):
                 # Variable case
                 parent_muted = self._change_variable(parent_muted)
@@ -308,19 +358,19 @@ class GeneticProgrammingAlgorithm:
 
         return expr
 
-    def _ramped_half_and_half(self, run_id):
+    def _ramped_half_and_half(self, population: list, population_size: int):
         depth = list(range(3, self.initial_max_depth))
 
-        for i in range(self.population_size // 2):
-            self.population[run_id].append(self._gen_random_expression('grow', choice(depth)))
+        for i in range(population_size // 2):
+            population.append(self._gen_random_expression('grow', choice(depth)))
 
-        for i in range(self.population_size // 2):
-            self.population[run_id].append(self._gen_random_expression('full', choice(depth)))
+        for i in range(population_size // 2):
+            population.append(self._gen_random_expression('full', choice(depth)))
 
-        if self.population_size % 2 != 0:
-            self.population[run_id].append(self._gen_random_expression('full', choice(depth)))
+        if population_size % 2 != 0:
+            population.append(self._gen_random_expression('full', choice(depth)))
 
-        return self.population[run_id]
+        return population
 
     def _sub_tree(self, tree, position, run_id):
         def sub_tree_(tree, position):

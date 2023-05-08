@@ -1,3 +1,6 @@
+import numpy as np
+
+
 def symbol(value):
     def decorator(func):
         func.__annotations__['symbol'] = value
@@ -28,3 +31,12 @@ def div_prot_w(x, y):
         return 1
     else:
         return x / y
+
+
+@symbol('sqrt')
+def sqrt_w(x):
+    if x >= 0:
+        return np.sqrt(x)
+    else:
+        return 1
+

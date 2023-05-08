@@ -1,3 +1,4 @@
+import sympy as sp
 from types import FunctionType
 from genetic_programming import function_wrappers # DONT ERASE THIS!
 
@@ -32,7 +33,6 @@ def individual_size(indiv):
 # Interpreter. FGGP, algorithm 3.1 - pg.25
 def interpreter(individual, variables):
     value = None
-
     if isinstance(individual, list):
         try:
             func = eval(individual[0])
@@ -42,8 +42,8 @@ def interpreter(individual, variables):
             else:
                 # Macro: don't evaluate arguments
                 value = individual
-        except Exception:
-            print('error')
+        except Exception as e:
+            print('Unknown error')
 
     elif isinstance(individual, (float, int)):
         # It's a constant
@@ -69,11 +69,21 @@ def is_float(string):
         return False
 
 
-def tree_to_inline_expression(tree, decimal_places: int = 5):
+def tree_to_inline_expression(tree: list, decimal_places: int = 5) -> str:
+    expression = tree_to_inline_expression_(tree)
+    print(expression)
+    expr = sp.sympify(expression)
+    simplified_expr = sp.simplify(expr)
+    simplified_expr = sp.expand(simplified_expr)
+    simplified_expr = sp.N(simplified_expr, decimal_places)
+
+    return simplified_expr
+
+
+def tree_to_inline_expression_(tree):
     if isinstance(tree, list):
         operator = ' ' + eval(tree[0]).__annotations__['symbol'] + ' '
-        operands = [tree_to_inline_expression(subtree) for subtree in tree[1:]]
-        operands = [('%.' + str(decimal_places) + 'f') % float(operand) if is_float(operand) else operand for operand in operands]
+        operands = [tree_to_inline_expression_(subtree) for subtree in tree[1:]]
 
         return f'({operator.join(operands)})'
     else:

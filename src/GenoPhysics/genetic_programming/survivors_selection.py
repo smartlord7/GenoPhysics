@@ -21,6 +21,6 @@ def survivors_elite(elite_size):
         population.sort(key=itemgetter(1), reverse=True)
         offspring.sort(key=itemgetter(1), reverse=True)
 
-        return pop[:size] + offspring[:-size]
+        return population[:size] + offspring[:-size]
 
     return survivors
