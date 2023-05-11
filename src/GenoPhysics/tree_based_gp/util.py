@@ -1,6 +1,5 @@
-from typing import Any
-
 import sympy as sp
+from typing import Any
 from types import FunctionType
 
 
@@ -88,3 +87,49 @@ def tree_to_inline_expression_(tree):
         return f'({operator.join(operands)})'
     else:
         return str(tree)
+
+
+def simplify_expression(expr):
+    """
+    Simplify a math expression defined by functions and variables.
+    """
+    # Split the expression into the function and the arguments
+    func_name, args = expr.split('(', 1)
+    args = args[:-1]  # Remove the closing parenthesis
+    # Split the arguments into a list of arguments
+    args_list = []
+    arg = ''
+    depth = 0
+    for c in args:
+        if c == ',' and depth == 0:
+            args_list.append(arg)
+            arg = ''
+        else:
+            arg += c
+            if c == '(':
+                depth += 1
+            elif c == ')':
+                depth -= 1
+    args_list.append(arg)
+    # Simplify the arguments recursively
+    args_simp = [simplify_expression(a) if '(' in a else a for a in args_list]
+    # Simplify the function
+    if func_name == 'function_wrappers.add_w':
+        return '({} + {})'.format(args_simp[0], args_simp[1])
+    elif func_name == 'function_wrappers.sub_w':
+        return '({} - {})'.format(args_simp[0], args_simp[1])
+    elif func_name == 'function_wrappers.mult_w':
+        return '({} * {})'.format(args_simp[0], args_simp[1])
+    elif func_name == 'function_wrappers.div_prot_w':
+        return '({} / {})'.format(args_simp[0], args_simp[1])
+    elif func_name == 'function_wrappers.sin_w':
+        return 'sin({})'.format(args_simp[0])
+    elif func_name == 'function_wrappers.cos_w':
+        return 'cos({})'.format(args_simp[0])
+    elif func_name == 'function_wrappers.exp_w':
+        return 'exp({})'.format(args_simp[0])
+    elif func_name == 'x':
+        return 'x{}'.format(int(args_simp[0]))
+    else:
+        raise ValueError('Unknown function: {}'.format(func_name))
+

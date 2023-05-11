@@ -13,6 +13,8 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
     DEFAULT_GRAMMAR_AXIOM = 'start'
     DEFAULT_GRAMMAR_WRAPPER = 2
     DEFAULT_FUNC_CROSSOVER = one_point_crossover
+    DEFAULT_TARGET_FITNESS = 0.0
+    __name__ = 'Grammar-based GP'
 
     def __init__(self,
                  problem_file_path: str,
@@ -32,10 +34,11 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
                  random_foreigners_injected_size: float = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE,
                  random_foreigners_injection_period: int = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD,
                  fitness_function: Callable = BaseGPAlgorithm.DEFAULT_FITNESS_FUNCTION,
-                 target_fitness: float = BaseGPAlgorithm.DEFAULT_TARGET_FITNESS,
+                 target_fitness: float = DEFAULT_TARGET_FITNESS,
                  invalid_fitness: float = BaseGPAlgorithm.DEFAULT_INVALID_FITNESS,
                  func_selection_survivors: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_SURVIVORS,
                  func_selection_parents: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_PARENTS,
+                 normalize: bool = True,
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
                  log_file_path: str = BaseGPAlgorithm.DEFAULT_LOG_FILE_PATH,
@@ -44,7 +47,8 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         super().__init__(problem_file_path, num_runs, num_generations, population_size,
                          prob_mutation, prob_crossover, tournament_size, elite_size, inject_random_foreigners,
                          random_foreigners_injected_size, random_foreigners_injection_period, fitness_function,
-                         target_fitness, invalid_fitness, func_selection_survivors, func_selection_parents, seed_rng,
+                         target_fitness, invalid_fitness, func_selection_survivors, func_selection_parents, normalize,
+                         seed_rng,
                          use_multiprocessing, log_file_path, verbose)
 
         self.func_crossover = func_crossover
@@ -61,16 +65,21 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
 
         for ds in self.fit_cases:
             ind_cp = copy.deepcopy(individual)
-            ind = ind_cp[0][0]
+            ind = ind_cp[0]
 
             for i in range(len(ds) - 1):
                 ind = ind.replace('x[' + str(i) + ']', str(ds[i]))
             y_pred.append(eval(ind))
 
+        data = [[x[i][0], y[i]] for i in range(len(x))]
+        data_pred = [[x[i][0], y_pred[i]] for i in range(len(x))]
+        data_denorm = np.asarray(self.scaler.inverse_transform(data))
+        data_pred_denorm = np.asarray(self.scaler.inverse_transform(data_pred))
+        plt.figure()
         plt.xlabel('Input')
         plt.ylabel('Output')
-        plt.plot(x, y, label='Y')
-        plt.plot(x, y_pred, label='Y_pred')
+        plt.plot(data_denorm[:, 0], data_denorm[:, 1], label='Y')
+        plt.plot(data_pred_denorm[:, 0], data_pred_denorm[:, 1], label='Y_pred')
         plt.legend(loc='best')
         plt.show()
 
@@ -83,17 +92,34 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         self.population[run_id] = self.generate_initial_population()
         elite_size_ = int(self.population_size * self.elite_size)
 
+        best_fitnesses = [-1 for gen in range(self.num_generations)]
+        plt.ion()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_title(self.__name__ + ' Training - Best')
+        ax.set_xlabel('Generation')
+        ax.set_ylabel(self.func_fitness.__name__)
+        ax.set_ylim(0, 10)
+        line_best, = ax.plot([gen for gen in range(self.num_generations)],
+                             best_fitnesses, 'r-', label='best')
+
         for gen in range(self.num_generations):
             self.population[run_id] = [self._evaluate(individual) for individual in self.population[run_id]]
             self.population[run_id].sort(key=lambda x: x[1])
+
             best = (self._mapping(self.population[run_id][0][0]), self.population[run_id][0][1])
+            self.bests.append(best)
+            best_fitnesses[gen] = best[1]
             self._log('Gen %d - Best fitness %.10f', (gen, best[1],), run_id)
+            ax.set_ylim(0, max(best_fitnesses) + max(best_fitnesses) / 10)
+            line_best.set_ydata(best_fitnesses)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
 
             if best[1] <= self.target_fitness:
                 self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, best[1],), run_id)
                 self.end()
 
-            self.bests.append(best)
             new_population = self.population[run_id][:elite_size_]
 
             for i in range(elite_size_, self.population_size):
@@ -109,7 +135,7 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
 
             self.population[run_id] = new_population
 
-        return best
+        return self.bests
 
     def generate_initial_population(self):
         return [self.generate_random_individual() for _ in range(self.population_size)]

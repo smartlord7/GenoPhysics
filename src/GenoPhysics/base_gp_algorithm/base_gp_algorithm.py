@@ -7,6 +7,8 @@ from time import perf_counter
 from types import FunctionType
 import pathos.multiprocessing as mp
 from matplotlib import pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+
 from base_gp_algorithm.fitness_functions import sigmoid
 from base_gp_algorithm.parents_selection import tournament
 from base_gp_algorithm.survivors_selection import survivors_generational
@@ -47,6 +49,7 @@ class BaseGPAlgorithm:
                  invalid_fitness: float = DEFAULT_INVALID_FITNESS,
                  func_selection_survivors: Callable = DEFAULT_FUNC_SELECTION_SURVIVORS,
                  func_selection_parents: Callable = DEFAULT_FUNC_SELECTION_PARENTS,
+                 normalize: bool = True,
                  seed_rng: int = None,
                  use_multiprocessing: bool = False,
                  log_file_path: str = DEFAULT_LOG_FILE_PATH,
@@ -80,6 +83,11 @@ class BaseGPAlgorithm:
         self._reset()
         self.log_file = open(log_file_path, 'w')
         self.header, self.fit_cases = self._get_gp_problem_data()
+        self.normalize = normalize
+
+        if normalize:
+            self.scaler = MinMaxScaler()
+            self.fit_cases = self.scaler.fit_transform(self.fit_cases).tolist()
 
         if seed_rng is not None:
             seed(seed_rng)
@@ -154,7 +162,7 @@ class BaseGPAlgorithm:
         x = list(map(lambda pair: pair[0], data))
         y = list(map(lambda pair: pair[1], data))
         plt.xlabel('Input variable')
-        plt.xlabel('Output variable')
+        plt.ylabel('Output variable')
         plt.plot(x, y)
         plt.show()
 

@@ -1,11 +1,9 @@
 import math
-from typing import Callable
-
 import numpy as np
 from copy import deepcopy
+from typing import Callable
 from types import FunctionType
 from operator import itemgetter
-import pathos.multiprocessing as mp
 from matplotlib import pyplot as plt
 from random import random, sample, choice
 from base_gp_algorithm.base_gp_algorithm import BaseGPAlgorithm
@@ -18,6 +16,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
     DEFAULT_INITIAL_MAX_DEPTH = 6
     DEFAULT_DIST_FUNC_EPHEMERAL = uniform_ephemeral()
     MODULE_REGISTER_FUNCTION_SET = 'function_wrappers'
+    __name__ = 'Tree-based GP'
 
     def __init__(self,
                  problem_file_path: str,
@@ -40,6 +39,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
                  dist_func_ephemeral: Callable = DEFAULT_DIST_FUNC_EPHEMERAL,
                  const_set: list = (),
                  seed_rng: int = None,
+                 normalize: bool = True,
                  use_multiprocessing: bool = False,
                  log_file_path: str = BaseGPAlgorithm.DEFAULT_LOG_FILE_PATH,
                  verbose: bool = True):
@@ -59,7 +59,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         super().__init__(problem_file_path, num_runs, num_generations, population_size,
                          prob_mutation, prob_crossover, tournament_size, elite_size, inject_random_foreigners,
                          random_foreigners_injected_size, random_foreigners_injection_period, fitness_function,
-                         target_fitness, invalid_fitness, func_selection_survivors, func_selection_parents, seed_rng,
+                         target_fitness, invalid_fitness, func_selection_survivors, func_selection_parents, normalize, seed_rng,
                          use_multiprocessing, log_file_path, verbose)
 
         self.initial_max_depth = initial_max_depth
@@ -71,16 +71,43 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self.terminal_set = self.vars_set + self.const_set
 
     def plot_results(self, results: list) -> None:
-        fig, ax = plt.subplots()
-        for i in range(self.num_runs):
-            ax.plot(results[i]['bests'], 'r-o', label='Best')
-            mn = np.mean(np.asarray(results[i]['all']), axis=1)
-            ax.plot(mn, 'g-s', label='Mean')
-            # create a boxplot
-            # bp = ax.boxplot(results[i]['all'], widths=0.5)
-            ax.set_xlabel('Generation')
-            ax.set_ylabel('Fitness ([0...1])')
-            plt.show()
+
+        # fig, ax = plt.subplots()
+        # for i in range(self.num_runs):
+        #    ax.plot(results[i]['bests'], 'r-o', label='Best')
+        #    mn = np.mean(np.asarray(results[i]['all']), axis=1)
+        #    ax.plot(mn, 'g-s', label='Mean')
+        #    # create a boxplot
+        #    # bp = ax.boxplot(results[i]['all'], widths=0.5)
+        #    ax.set_xlabel('Generation')
+        #    ax.set_ylabel('Fitness ([0...1])')
+        #    plt.show()
+
+        x = [ds[:-1] for ds in self.fit_cases]
+        y = [ds[-1] for ds in self.fit_cases]
+        best_copy = deepcopy(self.best_individual)[0]
+
+        predicted = []
+        real = []
+        for case in self.fit_cases:
+            predicted.append(interpreter(best_copy, case[:-1]))
+            real.append(case[-1])
+
+        data = np.asarray([[x[i][0], y[i]] for i in range(len(x))])
+        data_pred = np.asarray([[x[i][0], predicted[i]] for i in range(len(x))])
+
+        if self.normalize:
+            data = np.asarray(self.scaler.inverse_transform(data))
+            data_pred = np.asarray(self.scaler.inverse_transform(data_pred))
+        plt.figure()
+        plt.xlabel('Input')
+        plt.ylabel('Output')
+        plt.plot(data[:, 0], data[:, 1], label='Real')
+        plt.plot(data_pred[:, 0], data_pred[:, 1], label='Predicted')
+        plt.legend(loc='best')
+        plt.show()
+
+        return self.func_fitness(np.asarray(predicted), np.asarray(real))
 
     def _gp(self, run_id: int):
         self._log('Starting run no %d...', (run_id,), run_id)
@@ -90,6 +117,21 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         # Define initial population
         self._log('Initializing population with ramped-half-and-half...', (), run_id)
         self.chromosomes[run_id] = self._ramped_half_and_half(self.chromosomes[run_id], self.population_size)
+
+        # Prepare real time plots
+        plt.ion()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        ax.set_title(self.__name__ + ' Training')
+        ax.set_xlabel('Generation')
+        ax.set_ylabel(self.func_fitness.__name__)
+        ax.set_ylim(0, 1)
+        best_fitnesses = [-1 for gen in range(self.num_generations)]
+        avgs = [-1 for gen in range(self.num_generations)]
+        line_best, = ax.plot([gen for gen in range(self.num_generations)],
+                             best_fitnesses, 'r-', label='best')
+        line_avg, = ax.plot([gen for gen in range(self.num_generations)],
+                            avgs, 'g-', label='average')
 
         # Evaluate population
         self._log('Gen 0 - Evaluating initial population...', (), run_id)
@@ -124,6 +166,19 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
 
             # Statistics
             self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
+
+            if self.best_fitness[run_id] >= self.target_fitness:
+                self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, self.best_fitness[run_id],), run_id)
+                self.end()
+
+            fitnesses = list(map(lambda x: x[1] if x[1] != math.inf else 0, self.population[run_id]))
+            avgs[gen] = np.mean(fitnesses)
+            best_fitnesses[gen] = self.best_fitness[run_id]
+            line_best.set_ydata(best_fitnesses)
+            line_avg.set_ydata(avgs)
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+
             self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
             self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
             self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
@@ -166,6 +221,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
                 generation != 0 and \
                 (generation % self.random_foreigners_injection_period) == 0:
             size = math.ceil(self.random_foreigners_injected_size * len(self.population[run_id]))
+            self._log('Injected %d random foreigners', (size, ), run_id)
             chromosomes = []
             rdm_foreigners_chromosomes = self._ramped_half_and_half(chromosomes, size)
             rdm_foreigners_population = [[chromosome, self._evaluate(chromosome)] for chromosome in
