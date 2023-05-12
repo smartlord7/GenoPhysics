@@ -1,3 +1,19 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
+
 import sympy as sp
 from typing import Any
 from types import FunctionType
@@ -5,11 +21,38 @@ from base_gp_algorithm import function_wrappers
 
 
 def get_var_index(var):
+    """
+    Get the index of a variable name.
+
+    Parameters:
+    -----------
+    var : str
+        The name of the variable.
+
+    Returns:
+    --------
+    int
+        The index of the variable.
+    """
     return int(var[1:])
 
 
-def generate_vars(n_vars: int,
-                  suffix: str = 'X'):
+def generate_vars(n_vars: int, suffix: str = 'X'):
+    """
+    Generate a list of variable names.
+
+    Parameters:
+    -----------
+    n_vars : int
+        The number of variables to generate.
+    suffix : str, optional
+        The suffix to append to the variable names (default='X').
+
+    Returns:
+    --------
+    list
+        A list of variable names.
+    """
     vars_set = []
 
     for i in range(n_vars):
@@ -19,20 +62,58 @@ def generate_vars(n_vars: int,
 
 
 def is_var(name):
-    """Test: is name a variable?"""
+    """
+    Check if a string is a variable name.
+
+    Parameters:
+    -----------
+    name : str
+        The string to check.
+
+    Returns:
+    --------
+    bool
+        True if the string is a variable name, False otherwise.
+    """
     return isinstance(name, str) and (name[0] == 'X') and (name[1:].isdigit())
 
 
 def individual_size(indiv):
-    """ Number of nodes of an individual."""
+    """
+    Compute the number of nodes in an individual.
+
+    Parameters:
+    -----------
+    indiv : any
+        The individual to compute the size of.
+
+    Returns:
+    --------
+    int
+        The number of nodes in the individual.
+    """
     if not isinstance(indiv, list):
         return 1
     else:
         return 1 + sum(map(individual_size, indiv[1:]))
 
-
 # Interpreter. FGGP, algorithm 3.1 - pg.25
 def interpreter(individual, variables):
+    """
+    Interprets a genetic programming tree and returns the resulting value.
+
+    Parameters:
+    -----------
+    individual: list, float, int, or str
+        The genetic programming tree to interpret. Can be a list of nested sub-trees, a float or int constant, a string
+        variable name, or a string representing a terminal 0-ary function.
+    variables: list of floats
+        A list of values to bind to the variable names in the genetic programming tree.
+
+    Returns:
+    --------
+    The value of the interpreted genetic programming tree.
+    """
     value = None
     if isinstance(individual, list):
         try:
@@ -61,6 +142,19 @@ def interpreter(individual, variables):
 
 
 def is_float(string):
+    """
+    Checks if a given string can be converted to a float.
+
+    Parameters:
+    -----------
+    string: str
+        The string to check.
+
+    Returns:
+    --------
+    bool
+        True if the string can be converted to a float, False otherwise.
+    """
     try:
         float(string)
 
@@ -71,6 +165,22 @@ def is_float(string):
 
 
 def tree_to_inline_expression(tree: list, decimal_places: int = 9) -> tuple[str, Any]:
+    """
+    Converts a genetic programming tree to a simplified symbolic expression.
+
+    Parameters:
+    -----------
+    tree: list
+        The genetic programming tree to convert.
+    decimal_places: int, optional
+        The number of decimal places to round constants to in the resulting expression. Default is 9.
+
+    Returns:
+    --------
+    tuple of str and sympy.Expr
+        The first element of the tuple is a string representation of the unsimplified expression. The second element
+        is the resulting simplified symbolic expression.
+    """
     non_simplified_expr = tree_to_inline_expression_(tree)
     expr = sp.sympify(non_simplified_expr)
     simplified_expr = sp.simplify(expr)
@@ -81,6 +191,19 @@ def tree_to_inline_expression(tree: list, decimal_places: int = 9) -> tuple[str,
 
 
 def tree_to_inline_expression_(tree):
+    """
+    Convert a tree expression into an inline expression.
+
+    Parameters:
+    -----------
+    tree: list
+        Tree expression to convert.
+
+    Returns:
+    --------
+    str
+        Inline expression.
+    """
     if isinstance(tree, list):
         operator = ' ' + eval(tree[0]).__annotations__['symbol'] + ' '
         operands = [tree_to_inline_expression_(subtree) for subtree in tree[1:]]
@@ -93,6 +216,21 @@ def tree_to_inline_expression_(tree):
 def simplify_expression(expr):
     """
     Simplify a math expression defined by functions and variables.
+
+    Parameters:
+    -----------
+    expr: str
+        Math expression to simplify.
+
+    Returns:
+    --------
+    str
+        Simplified math expression.
+
+    Raises:
+    -------
+    ValueError
+        If the function name in the expression is unknown.
     """
     # Split the expression into the function and the arguments
     func_name, args = expr.split('(', 1)

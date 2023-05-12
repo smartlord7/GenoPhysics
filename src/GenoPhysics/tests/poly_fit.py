@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import sympy as sp
 import matplotlib
 import numpy as np
@@ -5,6 +20,17 @@ from matplotlib import pyplot as plt
 
 
 def main():
+    """
+       Function to fit a polynomial to data describing the Kepler's third law of the solar system and plot the results.
+
+       Parameters:
+       -----------
+       None
+
+       Returns:
+       --------
+       None
+    """
     matplotlib.use('TkAgg')
     FILE_PATH = '../../../data/solar_system_raw.txt'
     # Load data from file

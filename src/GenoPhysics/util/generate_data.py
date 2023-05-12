@@ -1,11 +1,44 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 
+
 def data_creation(file_name, function, domain, numb_cases, *function_set):
     """
-    domain = [...,(inf, sup),...], inf = starting value, sup = end value of each variable
-    function_set = (...,(name_function, arity), ...)
+    Generate fitness cases for a given function and save them to a file.
+
+    Parameters:
+    -----------
+    - file_name: str
+        The name of the file to save the fitness cases to.
+    - function: callable
+        The function to generate fitness cases for.
+    - domain: list of tuples
+        The domain of the function. Each tuple contains the starting and ending values of a variable.
+    - numb_cases: int
+        The number of fitness cases to generate.
+    - *function_set: list of tuples
+        A list of tuples containing the name and arity of each function used to generate the fitness cases.
+
+    Returns:
+    -----------
+        None
     """
     with open(file_name, 'w') as f_out:
         # Header
@@ -30,8 +63,25 @@ def data_creation(file_name, function, domain, numb_cases, *function_set):
             f_out.write(line)
         f_out.close()
 
-
 def plot_data(file_name, name, body, loc='best'):
+    """
+    Plot the data from a file containing fitness cases.
+
+    Parameters:
+    -----------
+    - file_name: str
+        The name of the file containing the fitness cases.
+    - name: str
+        The name of the plot.
+    - body: str
+        The label for the plot's data.
+    - loc: str
+        The location of the plot's legend.
+
+    Returns:
+    --------
+        None
+    """
     with open(file_name) as f_in:
         # read fitness cases
         data = f_in.readlines()[1:]
@@ -45,24 +95,80 @@ def plot_data(file_name, name, body, loc='best'):
         plt.legend(loc=loc)
         plt.show()
 
-
 def simbolic_regression_2(x):
+    """
+    Function to calculate symbolic regression with 2 variables
+
+    Parameters:
+    -----------
+    x: float
+        Input value for the function
+
+    Returns:
+    --------
+    float
+        Output value of the function
+    """
     return x ** 2 + x + 1
 
 
 def sphere(x, y):
+    """
+    Function to calculate the sphere function with 2 variables
+
+    Parameters:
+    -----------
+    x: float
+        Input value for the first variable
+    y: float
+        Input value for the second variable
+
+    Returns:
+    --------
+    float
+        Output value of the function
+    """
     return x ** 2 + y ** 2
 
 
 def sin_w(x):
+    """
+    Function to calculate sin(x)
+
+    Parameters:
+    -----------
+    x: float
+        Input value for the function
+
+    Returns:
+    --------
+    float
+        Output value of the function
+    """
     return np.sin(x)
 
 
 def wave(x):
+    """
+    Function to calculate sin(x) + 5*cos(x) - 2*sin(2*x)
+
+    Parameters:
+    -----------
+    x: float
+        Input value for the function
+
+    Returns:
+    --------
+    float
+        Output value of the function
+    """
     return np.sin(x) + 5 * np.cos(x) - 2 * np.sin(2 * x)
 
 
 def main():
+    """
+    Main function to generate datasets and plots for different functions
+    """
     # my file prefix
     prefix = ''
     data_creation(prefix + 'data_sin.txt', sin_w, [(2 * -3.14, 2 * 3.14)], 62, ('add_w', 2), ('sub_w', 2), ('mult_w', 2),

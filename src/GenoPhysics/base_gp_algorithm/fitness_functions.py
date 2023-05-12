@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import numpy as np
 
 

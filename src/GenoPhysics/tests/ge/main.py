@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import math
 import matplotlib
 from base_gp_algorithm.fitness_functions import rmse, sse
@@ -6,6 +21,21 @@ from grammar_based_gp.grammar_based_gp_algorithm import GrammarBasedGPAlgorithm
 from hyperopt import fmin, tpe, hp
 
 if __name__ == '__main__':
+    """
+      Function to run a genetic programming algorithm using a defined grammar and fitness function.
+      Reads data from a file and generates a population of individuals with a specified genotype size.
+      The algorithm runs for a set number of generations, selecting survivors through a tournament style selection.
+      Elite individuals are guaranteed to survive each generation. The best individual of each generation is tracked
+      and returned along with the population at each generation. The results are plotted at the end of the run.
+
+      Parameters:
+      -----------
+      None
+
+      Returns:
+      --------
+      None
+    """
     matplotlib.use('QtAgg')
     file_name = '../../../../data/solar_system.txt'
     grammar = {

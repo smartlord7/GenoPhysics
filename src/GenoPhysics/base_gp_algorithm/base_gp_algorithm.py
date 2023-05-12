@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import copy
 import os
 import sys
@@ -18,6 +33,55 @@ from tree_based_gp.ephemeral_constants import uniform_ephemeral
 
 
 class BaseGPAlgorithm:
+    """
+        A base class for implementing genetic programming algorithms.
+
+        Parameters:
+        -----------
+        problem_file_path: str
+            Path to the file containing the problem to be solved.
+        num_runs: int, optional
+            Number of runs to perform (default is 5).
+        num_generations: int, optional
+            Number of generations to run the algorithm (default is 100). If set to less than 1, the algorithm runs until the
+            target fitness is reached.
+        population_size: int, optional
+            Size of the population (default is 50).
+        prob_mutation: float, optional
+            Probability of mutating a node in a tree (default is 0.1).
+        prob_crossover: float, optional
+            Probability of performing crossover between two trees (default is 0.7).
+        tournament_size: int, optional
+            Number of individuals to select for tournament selection (default is 3).
+        elite_size: float, optional
+            Proportion of the population to select for elitism (default is 0.1).
+        inject_random_foreigners: bool, optional
+            Whether to inject random foreign individuals into the population (default is True).
+        random_foreigners_injected_size: float, optional
+            Proportion of the population to replace with random foreign individuals (default is 0.2).
+        random_foreigners_injection_period: int, optional
+            Period at which to inject the random foreign individuals (default is 50).
+        fitness_function: Callable, optional
+            Function to calculate the fitness of an individual (default is sse).
+        target_fitness: float, optional
+            Target fitness value to be achieved (default is 1.0).
+        invalid_fitness: float, optional
+            Fitness value to be assigned to invalid individuals (default is sys.maxsize).
+        func_selection_survivors: Callable, optional
+            Function to select the survivors in each generation (default is survivors_generational).
+        func_selection_parents: Callable, optional
+            Function to select the parents for mating in each generation (default is tournament).
+        normalize: bool, optional
+            Whether to normalize the fitness cases (default is True).
+        seed_rng: int, optional
+            Seed for the random number generator (default is None).
+        use_multiprocessing: bool, optional
+            Whether to use multiprocessing for evaluating individuals (default is False).
+        log_file_path: str, optional
+            Path to the log file to be created (default is 'output.log').
+        verbose: bool, optional
+            Whether to print output during execution (default is True).
+    """
     DEFAULT_NUM_RUNS = 5
     DEFAULT_NUM_GENERATIONS = 100
     DEFAULT_POPULATION_SIZE = 50
@@ -103,6 +167,22 @@ class BaseGPAlgorithm:
             self.best_individual.append([])
 
     def _log(self, msg: str, args: tuple = (), run_id: int = None):
+        """
+            Method to log a message with optional formatting and write it to a file.
+
+            Parameters:
+            -----------
+            msg: str
+                Message to be logged. Can contain string formatting placeholders.
+            args: tuple, optional (default=())
+                Tuple of arguments to be used with string formatting placeholders in `msg`.
+            run_id: int, optional (default=None)
+                Optional ID number to identify the current run when logging multiple runs.
+
+            Returns:
+            --------
+            None
+        """
         if self.verbose:
             current_time = perf_counter() - self.initial_time
 
@@ -118,6 +198,17 @@ class BaseGPAlgorithm:
         plt.show()
 
     def _reset(self):
+        """
+           Method to reset the internal state of the genetic programming algorithm.
+
+           Parameters:
+           -----------
+           None
+
+           Returns:
+           --------
+           None
+        """
         self.chromosomes = []
         self.population = []
         self.statistics = []
@@ -130,6 +221,18 @@ class BaseGPAlgorithm:
             self.count.append(0)
 
     def execute(self):
+        """
+            Method to execute the genetic programming algorithm.
+
+            Parameters:
+            -----------
+            None
+
+            Returns:
+            --------
+            results: list
+                List of results from running the algorithm for each specified run.
+        """
         self._log('Starting genetic programming algorithm...')
         results = []
         if self.use_multiprocessing:
@@ -147,9 +250,25 @@ class BaseGPAlgorithm:
         return results
 
     def end(self):
+        """
+            Closes the log file used to store information about the genetic programming run.
+        """
         self.log_file.close()
 
     def _get_gp_problem_data(self):
+        """
+            Retrieves the problem data for the genetic programming run.
+
+            Returns:
+            --------
+            tuple
+                A tuple containing two elements:
+                1. A list representing the problem header. The first element of the list is an integer specifying the number of
+                   input variables and the second element is a list of pairs, where each pair contains a variable name and its
+                   arity.
+                2. A list of lists representing the fitness cases for the problem. Each fitness case is represented as a list of
+                   floating-point numbers.
+        """
         with open(self.problem_file_path, 'r') as f_in:
             lines = f_in.readlines()
             header_line = lines[0][:-1]  # retrieve header
@@ -164,6 +283,12 @@ class BaseGPAlgorithm:
         return header, fit_cases
 
     def plot_data(self):
+        """
+            Plots the problem data.
+
+            If the data has been normalized, two plots are created: one with the normalized data and one with the denormalized
+            data. If the data has not been normalized, only the denormalized data is plotted.
+        """
         data = self.denorm_fit_cases
         x = list(map(lambda pair: pair[0], data))
         y = list(map(lambda pair: pair[1], data))
@@ -184,4 +309,12 @@ class BaseGPAlgorithm:
             plt.show()
 
     def _gp(self, run_id: int):
+        """
+            Performs the genetic programming run.
+
+            Parameters:
+            -----------
+            run_id: int
+                The ID of the current run. Used for logging purposes.
+        """
         pass

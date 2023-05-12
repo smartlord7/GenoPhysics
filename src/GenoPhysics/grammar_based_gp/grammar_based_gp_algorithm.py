@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import copy
 from typing import Callable
 import numpy as np
@@ -10,6 +25,64 @@ from grammar_based_gp.crossover_operators import one_point_crossover
 
 
 class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
+    """
+       A genetic programming algorithm based on a given grammar.
+
+       Parameters:
+       -----------
+       problem_file_path: str
+           The path to the file containing the problem definition.
+       grammar: dict
+           A dictionary containing the grammar rules.
+       num_runs: int = BaseGPAlgorithm.DEFAULT_NUM_RUNS
+           The number of times to run the algorithm.
+       num_generations: int = BaseGPAlgorithm.DEFAULT_NUM_GENERATIONS
+           The number of generations to run the algorithm for.
+       population_size: int = BaseGPAlgorithm.DEFAULT_POPULATION_SIZE
+           The number of individuals in the population.
+       prob_mutation: float = BaseGPAlgorithm.DEFAULT_PROB_MUTATION_NODE
+           The probability of a mutation occurring.
+       genotype_size: int = DEFAULT_GENOTYPE_SIZE
+           The size of the genotype.
+       grammar_axiom: str = DEFAULT_GRAMMAR_AXIOM
+           The starting symbol of the grammar.
+       grammar_wrapper: int = DEFAULT_GRAMMAR_WRAPPER
+           The number of non-terminals to wrap around a terminal in the grammar.
+       prob_crossover: float = BaseGPAlgorithm.DEFAULT_PROB_CROSSOVER
+           The probability of a crossover occurring.
+       func_crossover: Callable = DEFAULT_FUNC_CROSSOVER
+           The crossover function to use.
+       tournament_size: int = BaseGPAlgorithm.DEFAULT_TOURNAMENT_SIZE
+           The number of individuals to select for a tournament.
+       elite_size: float = BaseGPAlgorithm.DEFAULT_ELITE_SIZE
+           The percentage of the population to select as elite individuals.
+       inject_random_foreigners: bool = True
+           Whether or not to inject random foreign individuals into the population.
+       random_foreigners_injected_size: float = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE
+           The percentage of the population that is made up of random foreign individuals.
+       random_foreigners_injection_period: int = BaseGPAlgorithm.DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD
+           The period of time at which to inject random foreign individuals.
+       fitness_function: Callable = BaseGPAlgorithm.DEFAULT_FITNESS_FUNCTION
+           The fitness function to use.
+       target_fitness: float = DEFAULT_TARGET_FITNESS
+           The target fitness to achieve.
+       invalid_fitness: float = BaseGPAlgorithm.DEFAULT_INVALID_FITNESS
+           The fitness value to assign to individuals that violate constraints.
+       func_selection_survivors: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_SURVIVORS
+           The function to use for selecting survivors.
+       func_selection_parents: Callable = BaseGPAlgorithm.DEFAULT_FUNC_SELECTION_PARENTS
+           The function to use for selecting parents.
+       normalize: bool = True
+           Whether or not to normalize fitness values.
+       seed_rng: int = None
+           The seed for the random number generator.
+       use_multiprocessing: bool = False
+           Whether or not to use multiprocessing to speed up computation.
+       log_file_path: str = BaseGPAlgorithm.DEFAULT_LOG_FILE_PATH
+           The path to the file where the log will be written.
+       verbose: bool = True
+           Whether or not to print status updates during the algorithm.
+    """
     DEFAULT_GENOTYPE_SIZE = 256
     DEFAULT_GRAMMAR_AXIOM = 'start'
     DEFAULT_GRAMMAR_WRAPPER = 2
@@ -59,6 +132,19 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         self.grammar_wrapper = grammar_wrapper
 
     def plot_results(self, results):
+        """
+            Function to plot the performance results of a genetic algorithm optimization.
+
+            Parameters:
+            -----------
+            results: list
+                A list of lists where each inner list contains tuples of the form (individual, fitness) for each generation.
+
+            Returns:
+            --------
+            None
+                The function generates plots and saves them to disk, but does not return any values.
+        """
         plt.ioff()
         fig, ax = plt.subplots()
         ax.set_xlim([0, self.num_generations + 2])
@@ -113,10 +199,23 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         plt.legend(loc='best')
         plt.title('Best of bests | %s=%.8f' % (self.func_fitness.__name__, sse_de_norm))
         plt.legend(loc='best')
-        plt.savefig('best_of_bests_ge_norm.png')
+        plt.savefig('best_of_bests_ge.png')
         ##plt.show()
 
     def _gp(self, run_id: int):
+        """
+            Runs the genetic programming algorithm for a given run ID.
+
+            Parameters:
+            -----------
+            run_id: int
+                ID number of the current run.
+
+            Returns:
+            --------
+            List[Tuple[Any, float]]
+                A list of tuples containing the best individuals and their corresponding fitness scores for each generation.
+        """
         self._log('Starting run no %d...', (run_id,), run_id)
         self._reset()
 
@@ -177,14 +276,47 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         return self.best_individual[run_id]
 
     def generate_initial_population(self):
+        """
+          Generates an initial population of random individuals.
+
+          Returns:
+          --------
+          list
+              A list of `population_size` individuals, each represented as a list with two elements:
+              a genotype (a list of integers between 0 and 256) and a `None` fitness value.
+        """
         return [self.generate_random_individual() for _ in range(self.population_size)]
 
     def generate_random_individual(self):
+        """
+            Generates a random individual.
+
+            Returns:
+            --------
+            list
+                An individual, represented as a list with two elements:
+                a genotype (a list of integers between 0 and 256) and a `None` fitness value.
+        """
         genotype = [randint(0, 256) for _ in range(self.genotype_size)]
 
         return [genotype, None]
 
     def mutate(self, parent):
+        """
+           Mutates an individual.
+
+           Parameters:
+           -----------
+           parent: list
+               An individual, represented as a list with two elements:
+               a genotype (a list of integers between 0 and 256) and a fitness value.
+
+           Returns:
+           --------
+           list
+               The mutated individual, represented as a list with two elements:
+               a genotype (a list of integers between 0 and 256) and a `None` fitness value.
+        """
         parent = copy.deepcopy(parent)
         parent[1] = None
 
@@ -196,11 +328,26 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
 
     def _mapping(self, genotype):
         """
-        @used_gene: pointer for the integer to be used to decide the production rule
-        @production_options: list of production alternatives
-        @symbols_to_expand: frontier of the derivation tree. treated as a stack for a depth-first expansion
-        @output: word generated = individual
-        @current_production: index of the chosen production
+        Maps a genotype to a phenotype using the grammar defined in the class.
+
+        Parameters:
+        -----------
+        genotype : list
+            A list of integers that represents the genotype to be mapped.
+
+        Returns:
+        --------
+        str or None
+            The phenotype obtained after expanding the genotype using the grammar,
+            or None if it was impossible to expand.
+
+        Notes:
+        ------
+        The function uses a depth-first expansion strategy to derive the phenotype
+        from the genotype. It wraps the genotype when it is necessary to do so, and
+        selects randomly among the possible productions when there is more than one
+        for a non-terminal symbol. This function is intended to be used as a helper
+        function by the main genetic programming algorithm.
         """
         wraps = 0
         used_gene = 0
@@ -235,6 +382,29 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         return "".join(output)
 
     def _evaluate(self, individual):
+        """
+            Evaluates the fitness of an individual using the phenotype obtained from its genotype.
+
+            Parameters:
+            -----------
+            individual : list
+                A list containing the genotype of the individual and its fitness value.
+
+            Returns:
+            --------
+            list
+                The updated list containing the genotype and the new fitness value.
+
+            Notes:
+            ------
+            The function first maps the genotype to a phenotype using the `_mapping` method.
+            If it was possible to derive a phenotype, it evaluates the individual's fitness
+            by comparing the predicted output of the phenotype to the expected output in the
+            given test cases. The fitness value is computed using the `func_fitness` function
+            provided to the class during initialization. If it was impossible to derive a
+            phenotype, the individual is assigned the `invalid_fitness` value, indicating that
+            it cannot be evaluated.
+        """
         phenotype = self._mapping(individual[0])
 
         if phenotype is not None:

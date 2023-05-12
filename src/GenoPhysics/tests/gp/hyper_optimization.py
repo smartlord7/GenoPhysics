@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import matplotlib
 from hyperopt import fmin, tpe, hp
 from base_gp_algorithm.fitness_functions import sigmoid, sse
@@ -6,6 +21,17 @@ from base_gp_algorithm.survivors_selection import survivors_elite
 
 
 def main():
+    """
+       Main function that performs hyperparameter optimization for a tree-based genetic programming algorithm.
+
+       Parameters:
+       -----------
+       None
+
+       Returns:
+       --------
+       None
+    """
     # Set the backend for matplotlib
     matplotlib.use('TkAgg')
 
@@ -17,7 +43,7 @@ def main():
     # Define the search space for each hyperparameter
     SEARCH_SPACE = {
         'population_size': hp.quniform('population_size', 100, 500, 50),
-        'prob_mutation': hp.uniform('prob_mutation', 0.01, 0.5),
+        'prob_mutation': hp.uniform('prob_mutation', 0.1, 0.5),
         'prob_crossover': hp.uniform('prob_crossover', .5, 0.9),
         'random_foreigners_injected_size': hp.uniform('random_foreigners_injected_size', 0.1, 0.5),
         'random_foreigners_injection_period': hp.quniform('random_foreigners_injection_period', 5, 50, 5),
@@ -27,6 +53,21 @@ def main():
 
     # Define the objective function
     def objective(params):
+        """
+        The objective function used for hyperparameter optimization of Tree-Based Genetic Programming algorithm on a solar
+        system data set.
+
+        Parameters:
+        -----------
+        params : dict
+            A dictionary containing the hyperparameters for the Tree-Based Genetic Programming algorithm.
+
+        Returns:
+        --------
+        float
+            The negative of the maximum fitness value obtained from executing the Tree-Based Genetic Programming algorithm
+            with the given hyperparameters.
+        """
         # Create a new instance of the tree-based genetic programming algorithm with the given hyperparameters
         elite_survivors = survivors_elite(params['elite_size'])
         gp = TreeBasedGPAlgorithm(FILE_PATH,

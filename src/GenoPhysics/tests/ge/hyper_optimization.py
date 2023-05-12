@@ -1,3 +1,18 @@
+"""
+------------GenoPhysics: Kepler's Third Law of Planetary Motion------------
+ University of Coimbra
+ Masters in Intelligent Systems
+ Evolutionary Computation
+ 1st year, 2nd semester
+ Authors:
+ Sancho Amaral Simões, 2019217590, uc2019217590@student.uc.pt
+ Tiago Filipe Santa Ventura, 2019243695, uc2019243695@student.uc.pt
+ Credits to:
+ Ernesto Costa
+ João Macedo
+ Coimbra, 12th May 2023
+ ---------------------------------------------------------------------------
+"""
 import matplotlib
 from base_gp_algorithm.fitness_functions import rmse, sse
 from base_gp_algorithm.survivors_selection import survivors_elite
@@ -5,6 +20,9 @@ from grammar_based_gp.grammar_based_gp_algorithm import GrammarBasedGPAlgorithm
 from hyperopt import fmin, tpe, hp
 
 if __name__ == '__main__':
+    """
+       Main function to optimize hyperparameters for the grammar-based GP algorithm.
+    """
     matplotlib.use('QtAgg')
     file_name = '../../../../data/solar_system.txt'
     grammar = {
@@ -35,6 +53,19 @@ if __name__ == '__main__':
 
     # Define the objective function
     def objective(params):
+        """
+           Function to optimize hyperparameters for the grammar-based GP algorithm.
+
+           Parameters:
+           -----------
+           params: dict
+               Dictionary containing the hyperparameters to be optimized.
+
+           Returns:
+           --------
+           float
+               The fitness value of the last generation of the GP algorithm after execution.
+        """
         # Create a new instance of the GP algorithm with the given hyperparameters
         gp = GrammarBasedGPAlgorithm(file_name,
                                      grammar,
