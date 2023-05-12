@@ -28,4 +28,4 @@ if __name__ == '__main__':
                               fitness_function=sigmoid)
     #gp.plot_data()
     gp.execute()
-    #gp.plot_results(list())
+    gp.plot_results(list())
