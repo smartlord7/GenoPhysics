@@ -58,12 +58,14 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         self.grammar_wrapper = grammar_wrapper
 
     def plot_results(self, individual):
-        x = [ds[:-1] for ds in self.fit_cases]
-        y = [ds[-1] for ds in self.fit_cases]
+        cases = self.fit_cases
+
+        x = [ds[:-1] for ds in cases]
+        y = [ds[-1] for ds in cases]
 
         y_pred = []
 
-        for ds in self.fit_cases:
+        for ds in cases:
             ind_cp = copy.deepcopy(individual)
             ind = ind_cp[0]
 
@@ -76,10 +78,11 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         data_denorm = np.asarray(self.scaler.inverse_transform(data))
         data_pred_denorm = np.asarray(self.scaler.inverse_transform(data_pred))
         plt.figure()
-        plt.xlabel('Input')
-        plt.ylabel('Output')
-        plt.plot(data_denorm[:, 0], data_denorm[:, 1], label='Y')
-        plt.plot(data_pred_denorm[:, 0], data_pred_denorm[:, 1], label='Y_pred')
+        plt.title(self.problem_name + ' | Real vs Predicted')
+        plt.xlabel('Input variable')
+        plt.ylabel('Output variable')
+        plt.plot(data_denorm[:, 0], data_denorm[:, 1], label='Real')
+        plt.plot(data_pred_denorm[:, 0], data_pred_denorm[:, 1], label='Predicted')
         plt.legend(loc='best')
         plt.show()
 
@@ -92,16 +95,16 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         self.population[run_id] = self.generate_initial_population()
         elite_size_ = int(self.population_size * self.elite_size)
 
-        best_fitnesses = [-1 for gen in range(self.num_generations)]
+        best_fitnesses = [-1 for _ in range(self.num_generations)]
         plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.set_title(self.__name__ + ' Training - Best')
-        ax.set_xlabel('Generation')
-        ax.set_ylabel(self.func_fitness.__name__)
-        ax.set_ylim(0, 10)
-        line_best, = ax.plot([gen for gen in range(self.num_generations)],
-                             best_fitnesses, 'r-', label='best')
+        #fig = plt.figure()
+        #ax = fig.add_subplot(111)
+        #ax.set_title(self.__name__ + ' Training - Best')
+        #ax.set_xlabel('Generation')
+        #ax.set_ylabel(self.func_fitness.__name__)
+        #ax.set_ylim(0, 10)
+        #line_best, = ax.plot([gen for gen in range(self.num_generations)],
+                            # best_fitnesses, 'r-', label='best')
 
         for gen in range(self.num_generations):
             self.population[run_id] = [self._evaluate(individual) for individual in self.population[run_id]]
@@ -111,10 +114,10 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
             self.bests.append(best)
             best_fitnesses[gen] = best[1]
             self._log('Gen %d - Best fitness %.10f', (gen, best[1],), run_id)
-            ax.set_ylim(0, max(best_fitnesses) + max(best_fitnesses) / 10)
-            line_best.set_ydata(best_fitnesses)
-            fig.canvas.draw()
-            fig.canvas.flush_events()
+            #ax.set_ylim(0, max(best_fitnesses) + max(best_fitnesses) / 10)
+            #line_best.set_ydata(best_fitnesses)
+            #fig.canvas.draw()
+           #fig.canvas.flush_events()
 
             if best[1] <= self.target_fitness:
                 self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, best[1],), run_id)

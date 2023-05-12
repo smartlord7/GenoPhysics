@@ -1,6 +1,7 @@
 import sympy as sp
 from typing import Any
 from types import FunctionType
+from base_gp_algorithm import function_wrappers
 
 
 def get_var_index(var):

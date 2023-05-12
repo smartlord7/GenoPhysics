@@ -29,7 +29,7 @@ if __name__ == '__main__':
         'genotype_size': hp.quniform('genotype_size', 128, 512, 32),
         'prob_mutation': hp.uniform('prob_mutation', 0.01, 0.4),
         'prob_crossover': hp.uniform('prob_crossover', 0.3, 0.8),
-        'elite_size': hp.uniform('elite_size', 0.1, 0.2),
+        'elite_size': hp.uniform('elite_size', 0.1, 0.3),
         'tournament_size': hp.quniform('tournament_size', 20, 100, 20),
     }
 
@@ -44,7 +44,7 @@ if __name__ == '__main__':
                                      prob_crossover=params['prob_crossover'],
                                      elite_size=params['elite_size'],
                                      tournament_size=int(params['tournament_size']),
-                                     num_generations=50,
+                                     num_generations=100,
                                      inject_random_foreigners=True,
                                      func_selection_survivors=survivors_elite,
                                      log_file_path='ge_hyperopt.log',
@@ -53,13 +53,14 @@ if __name__ == '__main__':
                                      fitness_function=sse)
         # Execute the GP algorithm and return the fitness value
 
-        gp.plot_data()
+        #gp.plot_data()
         best = gp.execute()[0][-1] # get the fitness of the last one, since using elite
-        gp.plot_results(best)
+        #gp.plot_results(best)
 
         return best[1]
 
     # Perform the optimization
+
     best = fmin(
         fn=objective,
         space=search_space,

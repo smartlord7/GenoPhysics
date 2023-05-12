@@ -17,6 +17,7 @@ if __name__ == '__main__':
                               random_foreigners_injected_size=0.5,
                               random_foreigners_injection_period=50,
                               elite_size=0.1,
+                              tournament_size=3,
                               # Fixed
                               num_generations=1,
                               func_selection_survivors=elite_survivors,
@@ -25,6 +26,6 @@ if __name__ == '__main__':
                               num_runs=1,
                               seed_rng=1,
                               fitness_function=sigmoid)
-    gp.plot_data()
+    #gp.plot_data()
     gp.execute()
-    gp.plot_results(list())
+    #gp.plot_results(list())

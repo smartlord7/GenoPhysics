@@ -1,3 +1,5 @@
+import copy
+import os
 import sys
 from typing import Callable
 
@@ -81,10 +83,12 @@ class BaseGPAlgorithm:
         self.verbose = verbose
 
         self._reset()
+        self.problem_name = os.path.splitext(os.path.basename(self.problem_file_path))[0]
         self.log_file = open(log_file_path, 'w')
         self.header, self.fit_cases = self._get_gp_problem_data()
         self.normalize = normalize
 
+        self.denorm_fit_cases = copy.deepcopy(self.fit_cases)
         if normalize:
             self.scaler = MinMaxScaler()
             self.fit_cases = self.scaler.fit_transform(self.fit_cases).tolist()
@@ -158,13 +162,24 @@ class BaseGPAlgorithm:
         return header, fit_cases
 
     def plot_data(self):
-        data = self.fit_cases
+        data = self.denorm_fit_cases
         x = list(map(lambda pair: pair[0], data))
         y = list(map(lambda pair: pair[1], data))
         plt.xlabel('Input variable')
         plt.ylabel('Output variable')
-        plt.plot(x, y)
+        plt.title(self.problem_name)
+        plt.scatter(x, y)
         plt.show()
+
+        if self.normalize:
+            data = self.fit_cases
+            x = list(map(lambda pair: pair[0], data))
+            y = list(map(lambda pair: pair[1], data))
+            plt.xlabel('Input variable')
+            plt.ylabel('Output variable')
+            plt.title(self.problem_name + ' | Normalized')
+            plt.scatter(x, y)
+            plt.show()
 
     def _gp(self, run_id: int):
         pass

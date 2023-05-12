@@ -119,19 +119,19 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self.chromosomes[run_id] = self._ramped_half_and_half(self.chromosomes[run_id], self.population_size)
 
         # Prepare real time plots
-        plt.ion()
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
-        ax.set_title(self.__name__ + ' Training')
-        ax.set_xlabel('Generation')
-        ax.set_ylabel(self.func_fitness.__name__)
-        ax.set_ylim(0, 1)
-        best_fitnesses = [-1 for gen in range(self.num_generations)]
-        avgs = [-1 for gen in range(self.num_generations)]
-        line_best, = ax.plot([gen for gen in range(self.num_generations)],
-                             best_fitnesses, 'r-', label='best')
-        line_avg, = ax.plot([gen for gen in range(self.num_generations)],
-                            avgs, 'g-', label='average')
+        #plt.ion()
+        #fig = plt.figure()
+        #ax = fig.add_subplot(111)
+        #ax.set_title(self.__name__ + ' Training')
+        #ax.set_xlabel('Generation')
+        #ax.set_ylabel(self.func_fitness.__name__)
+        #ax.set_ylim(0, 1)
+        #best_fitnesses = [-1 for gen in range(self.num_generations)]
+        #avgs = [-1 for gen in range(self.num_generations)]
+        #line_best, = ax.plot([gen for gen in range(self.num_generations)],
+        #                    best_fitnesses, 'r-', label='best')
+        #line_avg, = ax.plot([gen for gen in range(self.num_generations)],
+                            #avgs, 'g-', label='average')
 
         # Evaluate population
         self._log('Gen 0 - Evaluating initial population...', (), run_id)
@@ -172,12 +172,12 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
                 self.end()
 
             fitnesses = list(map(lambda x: x[1] if x[1] != math.inf else 0, self.population[run_id]))
-            avgs[gen] = np.mean(fitnesses)
-            best_fitnesses[gen] = self.best_fitness[run_id]
-            line_best.set_ydata(best_fitnesses)
-            line_avg.set_ydata(avgs)
-            fig.canvas.draw()
-            fig.canvas.flush_events()
+            #avgs[gen] = np.mean(fitnesses)
+            #best_fitnesses[gen] = self.best_fitness[run_id]
+            #line_best.set_ydata(best_fitnesses)
+            #line_avg.set_ydata(avgs)
+            #fig.canvas.draw()
+            #fig.canvas.flush_events()
 
             self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
             self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])

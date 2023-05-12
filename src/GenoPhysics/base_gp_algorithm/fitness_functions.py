@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def sigmoid(predicted, real):
     """
     Calculates the sigmoid of the error between predicted and real values.
@@ -18,6 +19,7 @@ def sigmoid(predicted, real):
     error = np.sum(np.abs(predicted - real))
     return 1 / (1 + error)
 
+
 def sse(predicted, real):
     """
     Calculates the sum of squared errors between predicted and real values.
@@ -35,6 +37,7 @@ def sse(predicted, real):
     """
     return np.sum((predicted - real) ** 2)
 
+
 def mse(predicted, real):
     """
     Calculates the mean squared error between predicted and real values.
@@ -51,6 +54,7 @@ def mse(predicted, real):
         Mean squared error between predicted and real values.
     """
     return 1 / len(predicted) * np.sum((predicted - real) ** 2)
+
 
 def rmse(predicted, real):
     """
