@@ -1,6 +1,6 @@
 import matplotlib
 from hyperopt import fmin, tpe, hp
-from base_gp_algorithm.fitness_functions import sigmoid
+from base_gp_algorithm.fitness_functions import sigmoid, sse
 from tree_based_gp.tree_based_gp_algorithm import TreeBasedGPAlgorithm
 from base_gp_algorithm.survivors_selection import survivors_elite
 
@@ -11,7 +11,7 @@ def main():
 
     # Constants
     FILE_PATH = '../../../../data/solar_system.txt'
-    NUM_GENERATIONS = 50
+    NUM_GENERATIONS = 75
     NUM_OPT_RUNS = 100
 
     # Define the search space for each hyperparameter
@@ -20,7 +20,7 @@ def main():
         'prob_mutation': hp.uniform('prob_mutation', 0.1, 0.5),
         'prob_crossover': hp.uniform('prob_crossover', .5, 0.9),
         'random_foreigners_injected_size': hp.uniform('random_foreigners_injected_size', 0.1, 0.5),
-        'random_foreigners_injection_period': hp.quniform('random_foreigners_injection_period', 20, 200, 20),
+        'random_foreigners_injection_period': hp.quniform('random_foreigners_injection_period', 5, 50, 5),
         'tournament_size': hp.quniform('tournament_size', 2, 5, 1),
         'elite_size': hp.uniform('elite_size', 0.1, 0.3)
     }
@@ -43,11 +43,11 @@ def main():
                                   log_file_path='gp_hyperopt.log',
                                   num_runs=1,
                                   seed_rng=1,
-                                  fitness_function=sigmoid)
+                                  fitness_function=sse)
 
         # Execute the genetic programming algorithm and return the negative of the maximum fitness value
         gp.execute()
-        return -max(gp.best_fitness)
+        return min(gp.best_fitness)
 
     # Perform the hyper-parameter optimization
     BEST = fmin(

@@ -44,7 +44,7 @@ if __name__ == '__main__':
                                      prob_crossover=params['prob_crossover'],
                                      elite_size=params['elite_size'],
                                      tournament_size=int(params['tournament_size']),
-                                     num_generations=100,
+                                     num_generations=75,
                                      inject_random_foreigners=True,
                                      func_selection_survivors=survivors_elite,
                                      log_file_path='ge_hyperopt.log',

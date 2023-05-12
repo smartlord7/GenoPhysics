@@ -190,17 +190,17 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
     def tournament(self, run_id):
         pool = sample(self.population[run_id], self.tournament_size)
 
-        pool.sort(key=itemgetter(1), reverse=True)
+        pool.sort(key=itemgetter(1), reverse=False)
 
         return pool[0]
 
     def _get_best_individual(self, run_id):
         all_fit_values = [indiv[1] for indiv in self.population[run_id]]
-        max_fit = max(all_fit_values)
+        min_fit = min(all_fit_values)
 
-        index_max_fit = all_fit_values.index(max_fit)
+        index_min_fit = all_fit_values.index(min_fit)
 
-        return self.population[run_id][index_max_fit]
+        return self.population[run_id][index_min_fit]
 
     def _evaluate(self, individual):
         individual_copy = deepcopy(individual)
@@ -226,7 +226,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
             rdm_foreigners_chromosomes = self._ramped_half_and_half(chromosomes, size)
             rdm_foreigners_population = [[chromosome, self._evaluate(chromosome)] for chromosome in
                                          rdm_foreigners_chromosomes]
-            self.population[run_id].sort(key=itemgetter(1), reverse=False)
+            self.population[run_id].sort(key=itemgetter(1), reverse=True)
             rdm_foreigners_population.sort(key=itemgetter(1), reverse=True)
 
             self.population[run_id] = rdm_foreigners_population + self.population[run_id][size:]

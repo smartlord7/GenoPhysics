@@ -11,7 +11,7 @@ import pathos.multiprocessing as mp
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 
-from base_gp_algorithm.fitness_functions import sigmoid
+from base_gp_algorithm.fitness_functions import sigmoid, sse
 from base_gp_algorithm.parents_selection import tournament
 from base_gp_algorithm.survivors_selection import survivors_generational
 from tree_based_gp.ephemeral_constants import uniform_ephemeral
@@ -27,7 +27,7 @@ class BaseGPAlgorithm:
     DEFAULT_ELITE_SIZE = 0.1
     DEFAULT_RANDOM_FOREIGNERS_INJECTED_SIZE = 0.2
     DEFAULT_RANDOM_FOREIGNERS_INJECTION_PERIOD = 50
-    DEFAULT_FITNESS_FUNCTION = sigmoid
+    DEFAULT_FITNESS_FUNCTION = sse
     DEFAULT_FUNC_SELECTION_SURVIVORS = survivors_generational
     DEFAULT_FUNC_SELECTION_PARENTS = tournament
     DEFAULT_TARGET_FITNESS = 1.0
