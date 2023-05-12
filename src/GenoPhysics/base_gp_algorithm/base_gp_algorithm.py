@@ -96,6 +96,12 @@ class BaseGPAlgorithm:
         if seed_rng is not None:
             seed(seed_rng)
 
+        self.best_fitness = []
+        self.best_individual = []
+        for i in range(self.num_runs):
+            self.best_fitness.append(0)
+            self.best_individual.append([])
+
     def _log(self, msg: str, args: tuple = (), run_id: int = None):
         if self.verbose:
             current_time = perf_counter() - self.initial_time
@@ -114,17 +120,13 @@ class BaseGPAlgorithm:
     def _reset(self):
         self.chromosomes = []
         self.population = []
-        self.best_fitness = []
         self.statistics = []
-        self.best_individual = []
         self.count = []
 
         for i in range(self.num_runs):
             self.chromosomes.append([])
             self.population.append([])
-            self.best_fitness.append(0)
             self.statistics.append({})
-            self.best_individual.append([])
             self.count.append(0)
 
     def execute(self):

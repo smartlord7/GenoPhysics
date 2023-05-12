@@ -1,6 +1,6 @@
 import math
 import matplotlib
-from base_gp_algorithm.fitness_functions import rmse
+from base_gp_algorithm.fitness_functions import rmse, sse
 from base_gp_algorithm.survivors_selection import survivors_elite
 from grammar_based_gp.grammar_based_gp_algorithm import GrammarBasedGPAlgorithm
 from hyperopt import fmin, tpe, hp
@@ -24,24 +24,22 @@ if __name__ == '__main__':
             ['1.0']]
     }
 
-
     gp = GrammarBasedGPAlgorithm(file_name,
                                  grammar,
-                                 population_size=800,
-                                 genotype_size=256,
-                                 prob_mutation=0.2,
-                                 prob_crossover=0.6,
-                                 random_foreigners_injected_size=0.2,
-                                 elite_size=0.15,
-                                 tournament_size=3,
-                                 random_foreigners_injection_period=50,
+                                 population_size=900,
+                                 genotype_size=512,
+                                 prob_mutation=0.034031659639900486,
+                                 prob_crossover=0.71504110934997,
+                                 elite_size=0.16595647596149682,
+                                 tournament_size=80,
                                  # Fixed
-                                 num_generations=500,
-                                 inject_random_foreigners=True,
+                                 log_file_path='ge_runs.log',
+                                 normalize=True,
+                                 num_generations=75,
                                  func_selection_survivors=survivors_elite,
-                                 num_runs=1,
+                                 num_runs=30,
                                  seed_rng=1,
-                                 fitness_function=rmse)
-    gp.plot_data()
-    result = gp.execute()[0]
-    #gp.plot_results(results)
+                                 fitness_function=sse)
+    #plot_data()
+    results = gp.execute()
+    gp.plot_results(results)

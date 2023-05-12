@@ -70,7 +70,7 @@ def is_float(string):
         return False
 
 
-def tree_to_inline_expression(tree: list, decimal_places: int = 5) -> tuple[str, Any]:
+def tree_to_inline_expression(tree: list, decimal_places: int = 9) -> tuple[str, Any]:
     non_simplified_expr = tree_to_inline_expression_(tree)
     expr = sp.sympify(non_simplified_expr)
     simplified_expr = sp.simplify(expr)

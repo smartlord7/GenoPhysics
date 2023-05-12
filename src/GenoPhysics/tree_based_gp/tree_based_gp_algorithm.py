@@ -7,6 +7,7 @@ from operator import itemgetter
 from matplotlib import pyplot as plt
 from random import random, sample, choice
 from base_gp_algorithm.base_gp_algorithm import BaseGPAlgorithm
+from base_gp_algorithm.fitness_functions import sse
 from tree_based_gp.ephemeral_constants import uniform_ephemeral
 from tree_based_gp.util import is_var, generate_vars, interpreter, individual_size, \
     tree_to_inline_expression
@@ -69,23 +70,29 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self.const_set = list(const_set)
         self.const_set.append(self.dist_func_ephemeral)
         self.terminal_set = self.vars_set + self.const_set
+        self.min_fit = 0
 
     def plot_results(self, results: list) -> None:
+        plt.ioff()
+        fig, ax = plt.subplots()
+        ax.set_xlim([0, self.num_generations + 2])
+        bests = np.array([results[i]['bests'] for i in range(self.num_runs)])
+        np.savetxt(fname='bests_gp.txt', X=bests, delimiter=' ', fmt='%.10f')
+        mn = np.mean(bests, axis=0)
+        ax.plot([i for i in range(1, self.num_generations + 2)], mn, 'g-s', label='Mean best')
+        # create a boxplot
+        _ = ax.boxplot(bests, widths=0.25)
+        ax.set_xlabel('Generation')
+        ax.set_ylabel(self.func_fitness.__name__)
+        plt.title('Performance over generation | %d runs' % self.num_runs)
+        plt.legend(fontsize=12)
+        plt.savefig('box_plot_gp.png')
+        #plt.show()
 
-        # fig, ax = plt.subplots()
-        # for i in range(self.num_runs):
-        #    ax.plot(results[i]['bests'], 'r-o', label='Best')
-        #    mn = np.mean(np.asarray(results[i]['all']), axis=1)
-        #    ax.plot(mn, 'g-s', label='Mean')
-        #    # create a boxplot
-        #    # bp = ax.boxplot(results[i]['all'], widths=0.5)
-        #    ax.set_xlabel('Generation')
-        #    ax.set_ylabel('Fitness ([0...1])')
-        #    plt.show()
-
+        best_of_bests = self.best_individual[np.argmin(self.best_fitness)]
         x = [ds[:-1] for ds in self.fit_cases]
         y = [ds[-1] for ds in self.fit_cases]
-        best_copy = deepcopy(self.best_individual)[0]
+        best_copy = deepcopy(best_of_bests)
 
         predicted = []
         real = []
@@ -99,15 +106,109 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         if self.normalize:
             data = np.asarray(self.scaler.inverse_transform(data))
             data_pred = np.asarray(self.scaler.inverse_transform(data_pred))
+        sse_de_norm = sse(data, data_pred)
         plt.figure()
         plt.xlabel('Input')
         plt.ylabel('Output')
         plt.plot(data[:, 0], data[:, 1], label='Real')
         plt.plot(data_pred[:, 0], data_pred[:, 1], label='Predicted')
         plt.legend(loc='best')
-        plt.show()
+        plt.title('Best of bests | %s=%.8f' % (self.func_fitness.__name__, sse_de_norm))
+        print(tree_to_inline_expression(best_copy))
+        plt.savefig('best_of_bests_gp.png')
+        #plt.show()
 
         return self.func_fitness(np.asarray(predicted), np.asarray(real))
+
+    def _initialize_population(self, run_id):
+        self._log('Initializing population with ramped-half-and-half...', (), run_id)
+        self.chromosomes[run_id] = self._ramped_half_and_half(self.chromosomes[run_id], self.population_size)
+
+    def _prepare_plots(self):
+        plt.ion()
+        fig_best = plt.figure()
+        ax_best = fig_best.add_subplot(111)
+        ax_best.set_title(self.__name__ + ' Training - Best Fitness')
+        ax_best.set_xlabel('Generation')
+        ax_best.set_ylabel(self.func_fitness.__name__)
+        best_fitnesses = [-1 for gen in range(self.num_generations)]
+        ax_best.set_ylim(0, 1)
+        line_best, = ax_best.plot([gen for gen in range(self.num_generations)],
+                                  best_fitnesses, 'r-', label='best')
+        plt.legend()
+
+        fig_avg = plt.figure()
+        ax_avg = fig_avg.add_subplot(111)
+        ax_avg.set_title(self.__name__ + ' Training - Average Fitness')
+        ax_avg.set_xlabel('Generation')
+        ax_avg.set_ylabel(self.func_fitness.__name__)
+        avgs = [-1 for gen in range(self.num_generations)]
+        ax_avg.set_ylim(0, 1)
+        line_avg, = ax_avg.plot([gen for gen in range(self.num_generations)],
+                                avgs, 'g-', label='average')
+        plt.legend()
+
+        return fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg, best_fitnesses, avgs
+
+    def _evaluate_population(self, run_id, gen):
+        self._log('Gen %d - Evaluating population...', (gen,), run_id)
+        self.population[run_id] = [[chromosome, self._evaluate(chromosome)] for chromosome in self.chromosomes[run_id]]
+        self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
+        self._log('Gen %d - Best fitness %.8f', (gen, self.best_fitness[run_id],), run_id)
+        self.statistics[run_id]['bests'] = [self.best_fitness[run_id]]
+        self.statistics[run_id]['all'] = [[individual[1] for individual in self.population[run_id]]]
+
+    def _evolve_population(self, run_id, gen, fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg, best_fitnesses,
+                           avgs):
+        self._inject_random_foreigners(gen, run_id)
+        # offspring after variation
+        offspring = []
+        for j in range(self.population_size):
+            if random() < self.prob_crossover:
+                # subtree crossover
+                parent_1 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
+                parent_2 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
+                new_offspring = self._subtree_crossover(parent_1, parent_2, run_id)
+            else:  # prob mutation = 1 - prob crossover!
+                # mutation
+                parent = self.tournament(run_id)[0]
+                new_offspring = self._point_mutation(parent)
+            offspring.append(new_offspring)
+
+        # Evaluate new population (offspring)
+        offspring = [[chromosome, self._evaluate(chromosome)] for chromosome in offspring]
+
+        # Merge parents and offspring
+        self.population[run_id] = self.func_selection_survivors(self.population[run_id], offspring)
+
+        # Statistics
+        self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
+
+        if self.best_fitness[run_id] >= self.target_fitness:
+            self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, self.best_fitness[run_id],), run_id)
+            self.end()
+
+        fitnesses = list(map(lambda x: x[1] if x[1] != math.inf else 0, self.population[run_id]))
+        min_fit = min(fitnesses)
+        if min_fit > self.min_fit:
+            self.min_fit = min_fit
+        max_avg = max(avgs)
+        ax_best.set_ylim(0, self.min_fit + self.min_fit / 5)
+        ax_avg.set_ylim(0, max_avg + max_avg / 3)
+        avgs[gen] = np.mean(fitnesses)
+        best_fitnesses[gen] = self.best_fitness[run_id]
+        line_best.set_ydata(best_fitnesses)
+        line_avg.set_ydata(avgs)
+        fig_best.canvas.draw()
+        fig_best.canvas.flush_events()
+        fig_avg.canvas.draw()
+        fig_avg.canvas.flush_events()
+
+        self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
+        self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
+        self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
+        non_simplified_expr, simplified_expr = tree_to_inline_expression(self.best_individual[run_id])
+        self._log('Expression: %s', (simplified_expr,), run_id)
 
     def _gp(self, run_id: int):
         self._log('Starting run no %d...', (run_id,), run_id)
@@ -115,75 +216,21 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self._reset()
 
         # Define initial population
-        self._log('Initializing population with ramped-half-and-half...', (), run_id)
-        self.chromosomes[run_id] = self._ramped_half_and_half(self.chromosomes[run_id], self.population_size)
+        self._initialize_population(run_id)
 
         # Prepare real time plots
-        #plt.ion()
-        #fig = plt.figure()
-        #ax = fig.add_subplot(111)
-        #ax.set_title(self.__name__ + ' Training')
-        #ax.set_xlabel('Generation')
-        #ax.set_ylabel(self.func_fitness.__name__)
-        #ax.set_ylim(0, 1)
-        #best_fitnesses = [-1 for gen in range(self.num_generations)]
-        #avgs = [-1 for gen in range(self.num_generations)]
-        #line_best, = ax.plot([gen for gen in range(self.num_generations)],
-        #                    best_fitnesses, 'r-', label='best')
-        #line_avg, = ax.plot([gen for gen in range(self.num_generations)],
-                            #avgs, 'g-', label='average')
+        fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg, best_fitnesses, avgs = self._prepare_plots()
 
         # Evaluate population
-        self._log('Gen 0 - Evaluating initial population...', (), run_id)
-        self.population[run_id] = [[chromosome, self._evaluate(chromosome)] for chromosome in self.chromosomes[run_id]]
-        self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
-        self._log('Gen 0 - Best fitness %.8f', (self.best_fitness[run_id],), run_id)
-        self.statistics[run_id]['bests'] = [self.best_fitness[run_id]]
-        self.statistics[run_id]['all'] = [[individual[1] for individual in self.population[run_id]]]
+        self._evaluate_population(run_id, 0)
 
         # Evolve
         for gen in range(self.num_generations):
-            self._inject_random_foreigners(gen, run_id)
-            # offspring after variation
-            offspring = []
-            for j in range(self.population_size):
-                if random() < self.prob_crossover:
-                    # subtree crossover
-                    parent_1 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
-                    parent_2 = self.func_selection_parents(self.population[run_id], self.tournament_size)[0]
-                    new_offspring = self._subtree_crossover(parent_1, parent_2, run_id)
-                else:  # prob mutation = 1 - prob crossover!
-                    # mutation
-                    parent = self.tournament(run_id)[0]
-                    new_offspring = self._point_mutation(parent)
-                offspring.append(new_offspring)
-
-            # Evaluate new population (offspring)
-            offspring = [[chromosome, self._evaluate(chromosome)] for chromosome in offspring]
-
-            # Merge parents and offspring
-            self.population[run_id] = self.func_selection_survivors(self.population[run_id], offspring)
-
-            # Statistics
-            self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
-
-            if self.best_fitness[run_id] >= self.target_fitness:
-                self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, self.best_fitness[run_id],), run_id)
-                self.end()
-
-            fitnesses = list(map(lambda x: x[1] if x[1] != math.inf else 0, self.population[run_id]))
-            #avgs[gen] = np.mean(fitnesses)
-            #best_fitnesses[gen] = self.best_fitness[run_id]
-            #line_best.set_ydata(best_fitnesses)
-            #line_avg.set_ydata(avgs)
-            #fig.canvas.draw()
-            #fig.canvas.flush_events()
-
-            self.statistics[run_id]['bests'].append(self.best_fitness[run_id])
-            self.statistics[run_id]['all'].append([individual[1] for individual in self.population[run_id]])
-            self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
-            non_simplified_expr, simplified_expr = tree_to_inline_expression(self.best_individual[run_id])
-            self._log('Expression: %s', (simplified_expr,), run_id)
+            self._evolve_population(run_id, gen, fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg,
+                                    best_fitnesses, avgs)
+        fig_best.savefig('best_gp_%d.png' % run_id)
+        fig_avg.savefig('avg_gp_%d.png' % run_id)
+        plt.close('all')
 
         return self.statistics[run_id]
 

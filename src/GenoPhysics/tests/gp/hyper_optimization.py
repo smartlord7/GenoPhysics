@@ -46,7 +46,8 @@ def main():
                                   fitness_function=sse)
 
         # Execute the genetic programming algorithm and return the negative of the maximum fitness value
-        gp.execute()
+        results = gp.execute()
+        gp.plot_results(results)
         return min(gp.best_fitness)
 
     # Perform the hyper-parameter optimization
