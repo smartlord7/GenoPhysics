@@ -78,7 +78,7 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         flat_list = [tup for sublist in results for tup in sublist]
 
         # Find the tuple with the maximum value in the second position
-        max_tuple = max(flat_list, key=lambda x: x[1])
+        max_tuple = min(flat_list, key=lambda x: x[1])
 
         # Get the phenotype associated with the maximum value
         ind = max_tuple[0]
@@ -113,7 +113,7 @@ class GrammarBasedGPAlgorithm(BaseGPAlgorithm):
         plt.legend(loc='best')
         plt.title('Best of bests | %s=%.8f' % (self.func_fitness.__name__, sse_de_norm))
         plt.legend(loc='best')
-        plt.savefig('best_of_bests_ge.png')
+        plt.savefig('best_of_bests_ge_norm.png')
         ##plt.show()
 
     def _gp(self, run_id: int):

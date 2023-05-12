@@ -18,14 +18,14 @@ if __name__ == '__main__':
                               random_foreigners_injection_period=5,
                               elite_size=elite_size,
                               tournament_size=3,
-                              # Fixed
                               num_generations=75,
                               func_selection_survivors=elite_survivors,
                               inject_random_foreigners=True,
-                              log_file_path='gp_runs.log',
-                              num_runs=30,
-                              seed_rng=1,
+                              log_file_path='gp_runs3.log',
+                              num_runs=10,
+                              seed_rng=3,
+
                               fitness_function=sse)
-    #gp.plot_data()
+    gp.plot_data()
     results = gp.execute()
     gp.plot_results(results)

@@ -77,7 +77,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         fig, ax = plt.subplots()
         ax.set_xlim([0, self.num_generations + 2])
         bests = np.array([results[i]['bests'] for i in range(self.num_runs)])
-        np.savetxt(fname='bests_gp.txt', X=bests, delimiter=' ', fmt='%.10f')
+        np.savetxt(fname='bests_gp2.txt', X=bests, delimiter=' ', fmt='%.10f')
         mn = np.mean(bests, axis=0)
         ax.plot([i for i in range(1, self.num_generations + 2)], mn, 'g-s', label='Mean best')
         # create a boxplot
@@ -86,7 +86,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         ax.set_ylabel(self.func_fitness.__name__)
         plt.title('Performance over generation | %d runs' % self.num_runs)
         plt.legend(fontsize=12)
-        plt.savefig('box_plot_gp.png')
+        plt.savefig('box_plot_gp2.png')
         #plt.show()
 
         best_of_bests = self.best_individual[np.argmin(self.best_fitness)]
@@ -115,7 +115,7 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         plt.legend(loc='best')
         plt.title('Best of bests | %s=%.8f' % (self.func_fitness.__name__, sse_de_norm))
         print(tree_to_inline_expression(best_copy))
-        plt.savefig('best_of_bests_gp.png')
+        plt.savefig('best_of_bests_gp2.png')
         #plt.show()
 
         return self.func_fitness(np.asarray(predicted), np.asarray(real))
@@ -228,8 +228,8 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         for gen in range(self.num_generations):
             self._evolve_population(run_id, gen, fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg,
                                     best_fitnesses, avgs)
-        fig_best.savefig('best_gp_%d.png' % run_id)
-        fig_avg.savefig('avg_gp_%d.png' % run_id)
+        fig_best.savefig('best_gp_%d2.png' % run_id)
+        fig_avg.savefig('avg_gp_%d2.png' % run_id)
         plt.close('all')
 
         return self.statistics[run_id]

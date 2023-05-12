@@ -37,6 +37,7 @@ if __name__ == '__main__':
                                  normalize=True,
                                  num_generations=75,
                                  func_selection_survivors=survivors_elite,
+                                 use_multiprocessing=False,
                                  num_runs=30,
                                  seed_rng=1,
                                  fitness_function=sse)

@@ -17,7 +17,7 @@ def main():
     # Define the search space for each hyperparameter
     SEARCH_SPACE = {
         'population_size': hp.quniform('population_size', 100, 500, 50),
-        'prob_mutation': hp.uniform('prob_mutation', 0.1, 0.5),
+        'prob_mutation': hp.uniform('prob_mutation', 0.01, 0.5),
         'prob_crossover': hp.uniform('prob_crossover', .5, 0.9),
         'random_foreigners_injected_size': hp.uniform('random_foreigners_injected_size', 0.1, 0.5),
         'random_foreigners_injection_period': hp.quniform('random_foreigners_injection_period', 5, 50, 5),
