@@ -37,7 +37,7 @@ if __name__ == '__main__':
       None
     """
     matplotlib.use('QtAgg')
-    file_name = '../../../../data/solar_system.txt'
+    file_name = '../../../../data/trappist1.txt'
     grammar = {
 
         'start': [['expr']],
@@ -64,11 +64,11 @@ if __name__ == '__main__':
                                  tournament_size=80,
                                  # Fixed
                                  log_file_path='ge_runs.log',
-                                 normalize=True,
+                                 normalize=False,
                                  num_generations=75,
                                  func_selection_survivors=survivors_elite,
                                  use_multiprocessing=False,
-                                 num_runs=30,
+                                 num_runs=1,
                                  seed_rng=1,
                                  fitness_function=sse)
     #plot_data()

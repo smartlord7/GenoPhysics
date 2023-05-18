@@ -336,9 +336,9 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         # Statistics
         self.best_individual[run_id], self.best_fitness[run_id] = self._get_best_individual(run_id)
 
-        if self.best_fitness[run_id] >= self.target_fitness:
+        if self.best_fitness[run_id] <= self.target_fitness:
             self._log('Gen %d Target fitness %.10f reached. Terminating...', (gen, self.best_fitness[run_id],), run_id)
-            self.end()
+            return False
 
         fitnesses = list(map(lambda x: x[1] if x[1] != math.inf else 0, self.population[run_id]))
         min_fit = min(fitnesses)
@@ -361,6 +361,8 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
         self._log('Gen %d - Best fitness %.8f', (gen + 1, self.best_fitness[run_id]), run_id)
         non_simplified_expr, simplified_expr = tree_to_inline_expression(self.best_individual[run_id])
         self._log('Expression: %s', (simplified_expr,), run_id)
+
+        return True
 
     def _gp(self, run_id: int):
         """
@@ -391,8 +393,9 @@ class TreeBasedGPAlgorithm(BaseGPAlgorithm):
 
         # Evolve
         for gen in range(self.num_generations):
-            self._evolve_population(run_id, gen, fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg,
-                                    best_fitnesses, avgs)
+            if not self._evolve_population(run_id, gen, fig_best, ax_best, line_best, fig_avg, ax_avg, line_avg,
+                                    best_fitnesses, avgs):
+                break
         fig_best.savefig('best_gp_%d.png' % run_id)
         fig_avg.savefig('avg_gp_%d.png' % run_id)
         plt.close('all')

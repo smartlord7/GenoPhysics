@@ -94,7 +94,7 @@ class BaseGPAlgorithm:
     DEFAULT_FITNESS_FUNCTION = sse
     DEFAULT_FUNC_SELECTION_SURVIVORS = survivors_generational
     DEFAULT_FUNC_SELECTION_PARENTS = tournament
-    DEFAULT_TARGET_FITNESS = 1.0
+    DEFAULT_TARGET_FITNESS = 0.0
     DEFAULT_INVALID_FITNESS = sys.maxsize
     DEFAULT_LOG_FILE_PATH = 'output.log'
 

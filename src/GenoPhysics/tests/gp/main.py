@@ -32,7 +32,7 @@ if __name__ == '__main__':
       None
     """
     matplotlib.use('TkAgg')
-    filename_1 = '../../../../data/solar_system.txt'
+    filename_1 = '../../../../data/trappist1.txt'
     elite_size = 0.13393895258058527
     elite_survivors = survivors_elite(elite_size)
 
@@ -45,13 +45,15 @@ if __name__ == '__main__':
                               elite_size=elite_size,
                               tournament_size=3,
                               # Fixed
+                              normalize=False,
                               num_generations=75,
                               func_selection_survivors=elite_survivors,
                               inject_random_foreigners=True,
-                              log_file_path='gp_runs.log',
-                              num_runs=30,
+                              num_runs=1,
                               seed_rng=1,
                               fitness_function=sse)
+
+
     #gp.plot_data()
     results = gp.execute()
     gp.plot_results(results)
